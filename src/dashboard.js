@@ -6,8 +6,8 @@ const meetings = [
     summary:
       'Discussed the Q4 roadmap, finalized the marketing budget for the holiday campaign, and assigned launch owners.',
     category: 'Product',
-    accent: '#2d8cff',
-    iconBg: '#eaf2ff',
+    accent: '#0a84ff',
+    iconBg: '#eaf4ff',
     icon: 'bi-people-fill',
     participants: ['AM', 'SK'],
     extraParticipants: 2,
@@ -19,8 +19,8 @@ const meetings = [
     summary:
       'User highlighted pain points in onboarding flow, specifically regarding email verification and first-time setup.',
     category: 'UX Research',
-    accent: '#ff8f3d',
-    iconBg: '#fff2e9',
+    accent: '#d9912f',
+    iconBg: '#fff5e8',
     icon: 'bi-person-fill',
     participants: ['AM'],
     extraParticipants: 0,
@@ -32,8 +32,8 @@ const meetings = [
     summary:
       'Revenue increased by 15% QoQ. Operating costs are stable, and approved hiring plan for 3 new roles.',
     category: 'Finance',
-    accent: '#22c55e',
-    iconBg: '#e8faee',
+    accent: '#2f9c7a',
+    iconBg: '#eaf7f1',
     icon: 'bi-graph-up-arrow',
     participants: ['DM', 'AL'],
     extraParticipants: 0,
@@ -45,8 +45,8 @@ const meetings = [
     summary:
       'Ideas for social media campaign: day in the life content, customer success stories, and influencer partnerships.',
     category: 'Marketing',
-    accent: '#9ca3af',
-    iconBg: '#f0f2f5',
+    accent: '#7a869b',
+    iconBg: '#eff2f6',
     icon: 'bi-lightbulb-fill',
     participants: ['ME'],
     extraParticipants: 0,

@@ -10,7 +10,7 @@ const transcriptEntries = [
     speaker: 'You',
     initials: 'YU',
     time: '10:44 AM',
-    text: 'Yes, I updated the Figma file. We are using primary blue #0066cc as the main accent for readability.',
+    text: 'Yes, I updated the Figma file. We are using primary blue #0a84ff as the main accent for readability.',
     isYou: true,
   },
   {
@@ -34,14 +34,14 @@ const { escapeHtml, renderDefaultTags, initializeSmartScrollbars, refreshScrolla
 
 const tagList = document.getElementById('tag-list');
 const recordingView = document.getElementById('recording-view');
-const recordingStatusChip = document.getElementById('recording-status-chip');
-const recordingStatusText = document.getElementById('recording-status-text');
+const recordingStatusTextInline = document.getElementById('recording-status-text-inline');
+const recordingLiveDot = document.getElementById('recording-live-dot');
+const tinySignalMeter = document.getElementById('tiny-signal-meter');
 const timerHours = document.getElementById('timer-hours');
 const timerMinutes = document.getElementById('timer-minutes');
 const timerSeconds = document.getElementById('timer-seconds');
 const micToggleButton = document.getElementById('mic-toggle-btn');
 const startRecordingButton = document.getElementById('start-recording-btn');
-const pauseRecordingButton = document.getElementById('pause-recording-btn');
 const stopRecordingButton = document.getElementById('stop-recording-btn');
 const transcriptFeed = document.getElementById('transcript-feed');
 
@@ -54,6 +54,40 @@ const defaultRecordingState = {
 
 const recordingState = { ...defaultRecordingState };
 let recordingTimerId = null;
+const recordingModes = Object.freeze({
+  STOPPED: 'stopped',
+  LIVE: 'live',
+  PAUSED: 'paused',
+});
+
+const recordingUiByMode = Object.freeze({
+  [recordingModes.STOPPED]: {
+    statusText: 'Ready',
+    primaryActionText: 'Start',
+    primaryActionLabel: 'Start recording',
+    primaryActionIconClass: 'bi bi-record-circle',
+  },
+  [recordingModes.LIVE]: {
+    statusText: 'Recording',
+    primaryActionText: 'Pause',
+    primaryActionLabel: 'Pause recording',
+    primaryActionIconClass: 'bi bi-pause-fill',
+  },
+  [recordingModes.PAUSED]: {
+    statusText: 'Paused',
+    primaryActionText: 'Resume',
+    primaryActionLabel: 'Resume recording',
+    primaryActionIconClass: 'bi bi-play-fill',
+  },
+});
+
+function getRecordingMode() {
+  if (!recordingState.isRecording) {
+    return recordingModes.STOPPED;
+  }
+
+  return recordingState.isPaused ? recordingModes.PAUSED : recordingModes.LIVE;
+}
 
 function formatTimerPart(value) {
   return String(value).padStart(2, '0');
@@ -89,65 +123,64 @@ function startRecordingTimer() {
   }, 1000);
 }
 
-function updateRecordingStatus() {
-  recordingStatusChip.classList.remove('is-live', 'is-paused', 'is-stopped');
+function updateInlineRecordingStatus(mode) {
+  const statusMeta = recordingUiByMode[mode];
+  const isLive = mode === recordingModes.LIVE;
+  const isPaused = mode === recordingModes.PAUSED;
 
-  if (!recordingState.isRecording) {
-    recordingStatusChip.classList.add('is-stopped');
-    recordingStatusText.textContent = 'Ready to record';
-  } else if (recordingState.isPaused) {
-    recordingStatusChip.classList.add('is-paused');
-    recordingStatusText.textContent = 'Recording paused';
-  } else {
-    recordingStatusChip.classList.add('is-live');
-    recordingStatusText.textContent = 'Recording in progress';
-  }
+  recordingStatusTextInline.textContent = statusMeta.statusText;
+  recordingLiveDot.classList.toggle('is-active', isLive);
+  recordingLiveDot.classList.toggle('is-paused', isPaused);
+  tinySignalMeter.classList.toggle('is-active', mode !== recordingModes.STOPPED);
+  tinySignalMeter.classList.toggle('is-paused', isPaused);
 }
 
 function updateMicButton() {
   const micIcon = micToggleButton.querySelector('i');
-  micIcon.className = recordingState.isMicMuted ? 'bi bi-mic-mute-fill' : 'bi bi-mic-fill';
-  micToggleButton.classList.toggle('is-muted', recordingState.isMicMuted);
+  const isMuted = recordingState.isMicMuted;
+
+  micIcon.className = isMuted ? 'bi bi-mic-mute-fill' : 'bi bi-mic-fill';
+  micToggleButton.classList.toggle('is-muted', isMuted);
   micToggleButton.setAttribute(
     'aria-pressed',
-    recordingState.isMicMuted ? 'true' : 'false'
+    isMuted ? 'true' : 'false'
+  );
+  micToggleButton.setAttribute(
+    'aria-label',
+    isMuted ? 'Unmute microphone' : 'Mute microphone'
   );
 }
 
-function updatePauseButton() {
-  const pauseIcon = pauseRecordingButton.querySelector('i');
-  const pauseText = pauseRecordingButton.querySelector('span');
-  const paused = recordingState.isPaused;
+function updatePrimaryActionButton(mode) {
+  const primaryActionIcon = startRecordingButton.querySelector('i');
+  const primaryActionText = startRecordingButton.querySelector('span');
+  const modeMeta = recordingUiByMode[mode];
 
-  pauseIcon.className = paused ? 'bi bi-play-fill' : 'bi bi-pause-fill';
-  pauseText.textContent = paused ? 'Resume' : 'Pause';
-  pauseRecordingButton.disabled = !recordingState.isRecording;
+  primaryActionIcon.className = modeMeta.primaryActionIconClass;
+  primaryActionText.textContent = modeMeta.primaryActionText;
+  startRecordingButton.setAttribute('aria-label', modeMeta.primaryActionLabel);
 }
 
-function updateActionButtons() {
-  const isIdle = !recordingState.isRecording;
-  startRecordingButton.hidden = !isIdle;
-  pauseRecordingButton.hidden = isIdle;
-  stopRecordingButton.disabled = isIdle;
+function updateStopButton(mode) {
+  const isStopped = mode === recordingModes.STOPPED;
+  stopRecordingButton.disabled = isStopped;
+  stopRecordingButton.hidden = isStopped;
 }
 
 function applyRecordingState() {
-  updateRecordingStatus();
+  const mode = getRecordingMode();
+  updateInlineRecordingStatus(mode);
   updateMicButton();
-  updatePauseButton();
-  updateActionButtons();
+  updatePrimaryActionButton(mode);
+  updateStopButton(mode);
 
-  recordingView.classList.toggle(
-    'is-live',
-    recordingState.isRecording && !recordingState.isPaused
-  );
-  recordingView.classList.toggle('is-paused', recordingState.isPaused);
-  recordingView.classList.toggle('is-stopped', !recordingState.isRecording);
+  recordingView.dataset.state = mode;
 
-  timerSeconds.classList.toggle(
-    'is-accent',
-    recordingState.isRecording && !recordingState.isPaused
-  );
+  recordingView.classList.toggle('is-live', mode === recordingModes.LIVE);
+  recordingView.classList.toggle('is-paused', mode === recordingModes.PAUSED);
+  recordingView.classList.toggle('is-stopped', mode === recordingModes.STOPPED);
+
+  timerSeconds.classList.toggle('is-accent', mode === recordingModes.LIVE);
 }
 
 function renderTranscript(entries) {
@@ -205,20 +238,19 @@ function stopRecording() {
 }
 
 function initializeRecordingControls() {
-  startRecordingButton.addEventListener('click', startNewRecording);
-
-  micToggleButton.addEventListener('click', () => {
-    recordingState.isMicMuted = !recordingState.isMicMuted;
-    updateMicButton();
-  });
-
-  pauseRecordingButton.addEventListener('click', () => {
+  startRecordingButton.addEventListener('click', () => {
     if (!recordingState.isRecording) {
+      startNewRecording();
       return;
     }
 
     recordingState.isPaused = !recordingState.isPaused;
     applyRecordingState();
+  });
+
+  micToggleButton.addEventListener('click', () => {
+    recordingState.isMicMuted = !recordingState.isMicMuted;
+    updateMicButton();
   });
 
   stopRecordingButton.addEventListener('click', () => {

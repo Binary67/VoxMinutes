@@ -14,7 +14,7 @@ const createWindow = () => {
     minWidth: 1024,
     minHeight: 680,
     autoHideMenuBar: true,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#f3f4f7',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
