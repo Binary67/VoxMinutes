@@ -1,0 +1,459 @@
+.recording-view {
+  display: grid;
+  gap: 24px;
+}
+
+.recording-header {
+  text-align: center;
+}
+
+.recording-header h1 {
+  margin: 0;
+  font-size: clamp(1.95rem, 1.7rem + 1vw, 2.6rem);
+  line-height: 1.12;
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.02em;
+}
+
+.recording-header p {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: clamp(0.98rem, 0.93rem + 0.32vw, 1.05rem);
+  line-height: 1.45;
+  font-weight: var(--fw-medium);
+}
+
+.recording-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.recording-status-inline {
+  margin: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-elevated);
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #bcc6d6;
+  transition:
+    background var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
+}
+
+.live-dot.is-active {
+  background: #e14d4d;
+  box-shadow: 0 0 0 6px rgba(225, 77, 77, 0.18);
+  animation: recording-live-pulse 1.2s ease-in-out infinite;
+}
+
+.live-dot.is-paused {
+  background: #f3b04f;
+  box-shadow: none;
+  animation: none;
+}
+
+.recording-status-text-inline {
+  color: #5a6578;
+  font-size: var(--fs-caption);
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: var(--fw-semibold);
+}
+
+.tiny-signal-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+}
+
+.tiny-signal-meter span {
+  width: 3px;
+  height: var(--meter-height, 100%);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, #b2daff 0%, #4f9ef2 100%);
+  transform-origin: bottom;
+  transform: scaleY(0.42);
+  opacity: 0.35;
+  animation: tiny-signal-pulse 1.12s ease-in-out infinite;
+  animation-play-state: paused;
+}
+
+.tiny-signal-meter span:nth-child(1) {
+  --meter-height: 42%;
+}
+
+.tiny-signal-meter span:nth-child(2) {
+  --meter-height: 68%;
+  animation-delay: 0.12s;
+}
+
+.tiny-signal-meter span:nth-child(3) {
+  --meter-height: 100%;
+  animation-delay: 0.24s;
+}
+
+.tiny-signal-meter span:nth-child(4) {
+  --meter-height: 68%;
+  animation-delay: 0.36s;
+}
+
+.tiny-signal-meter span:nth-child(5) {
+  --meter-height: 42%;
+  animation-delay: 0.48s;
+}
+
+.tiny-signal-meter.is-active span {
+  animation-play-state: running;
+  opacity: 0.92;
+}
+
+.tiny-signal-meter.is-paused span {
+  animation-play-state: paused;
+  transform: scaleY(0.64);
+  opacity: 0.62;
+}
+
+.recording-mic-control {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  box-shadow: none;
+}
+
+.timer-section {
+  justify-self: center;
+}
+
+.timer-readout {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.timer-part {
+  font-size: clamp(2.95rem, 6.9vw, 4.9rem);
+  line-height: 1;
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: #1f232b;
+}
+
+.timer-part.is-accent {
+  color: var(--brand);
+}
+
+.timer-separator {
+  font-size: clamp(2.7rem, 6.2vw, 4.6rem);
+  line-height: 1;
+  color: #c8d1df;
+  font-weight: var(--fw-semibold);
+}
+
+.timer-units {
+  margin-top: 9px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 52px;
+  color: #8e98aa;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.recording-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-control,
+.action-control {
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.icon-control {
+  width: 50px;
+  height: 50px;
+  border-radius: var(--radius-pill);
+  border-color: var(--border-soft);
+  background: var(--surface-solid);
+  color: #607089;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.icon-control:hover {
+  background: var(--surface-muted);
+}
+
+.icon-control.is-muted {
+  color: #a33434;
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+}
+
+.action-control {
+  min-height: 50px;
+  border-radius: var(--radius-pill);
+  padding: 10px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+}
+
+.action-control span {
+  font-size: 1.15rem;
+  line-height: 1;
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.015em;
+}
+
+.action-control.primary {
+  background: var(--brand);
+  color: var(--text-on-accent);
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.22);
+}
+
+.action-control.primary:hover {
+  background: var(--brand-deep);
+  transform: translateY(-1px);
+}
+
+.action-control.danger {
+  border-color: var(--danger-border);
+  background: #fff;
+  color: var(--danger);
+}
+
+.action-control.danger:hover {
+  background: #fff5f5;
+}
+
+.action-control.is-compact {
+  min-height: 44px;
+  padding: 9px 14px;
+  font-size: 16px;
+  gap: 6px;
+  box-shadow: none;
+}
+
+.action-control.is-compact span {
+  font-size: 0.95rem;
+  letter-spacing: 0;
+}
+
+.action-control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.transcript-section {
+  margin-top: 2px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.transcript-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.transcript-title {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6f7c90;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.language-chip {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 5px 11px;
+  background: var(--surface-muted);
+  color: #53667f;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+}
+
+.language-chip:hover {
+  background: #eceff5;
+}
+
+.transcript-feed {
+  margin-top: 14px;
+  max-height: 244px;
+  overflow: auto;
+  display: grid;
+  gap: 0;
+  padding-right: 4px;
+}
+
+.transcript-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.transcript-entry:last-child {
+  border-bottom: 0;
+}
+
+.transcript-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: #eef2f8;
+  color: #60728d;
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  flex-shrink: 0;
+}
+
+.transcript-entry.is-you .transcript-avatar {
+  background: #e4f0ff;
+  color: #2b5d95;
+}
+
+.transcript-content {
+  min-width: 0;
+}
+
+.transcript-meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-medium);
+}
+
+.transcript-speaker {
+  color: #5f6f88;
+  font-weight: var(--fw-semibold);
+}
+
+.transcript-entry.is-you .transcript-speaker {
+  color: #2c5f9d;
+}
+
+.transcript-time {
+  color: #9aa6ba;
+}
+
+.transcript-text {
+  margin: 4px 0 0;
+  color: #2e3442;
+  font-size: 1rem;
+  line-height: 1.48;
+  font-weight: var(--fw-medium);
+}
+
+@keyframes recording-live-pulse {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes tiny-signal-pulse {
+  0%,
+  100% {
+    transform: scaleY(0.52);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@media (max-width: 980px) {
+  .timer-units {
+    gap: 34px;
+  }
+}
+
+@media (max-width: 760px) {
+  .recording-header p {
+    font-size: 0.97rem;
+  }
+
+  .timer-readout {
+    gap: 9px;
+  }
+
+  .timer-units {
+    gap: 16px;
+  }
+
+  .recording-status-row {
+    gap: 10px;
+  }
+
+  .recording-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .action-control.primary {
+    min-width: 210px;
+    justify-content: center;
+  }
+
+  .action-control.is-compact {
+    min-width: 108px;
+    justify-content: center;
+  }
+
+  .transcript-section {
+    padding: 14px;
+  }
+
+  .transcript-header {
+    flex-wrap: wrap;
+  }
+}
