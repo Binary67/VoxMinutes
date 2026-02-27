@@ -17,6 +17,14 @@ contextBridge.exposeInMainWorld('recordingApi', {
     return ipcRenderer.invoke('recording:rename-speaker', payload);
   },
 
+  renameTranscriptSession(payload) {
+    return ipcRenderer.invoke('recording:rename-session', payload);
+  },
+
+  deleteTranscriptSession(payload) {
+    return ipcRenderer.invoke('recording:delete-session', payload);
+  },
+
   loadTranscript(payload) {
     return ipcRenderer.invoke('recording:load-transcript', payload);
   },

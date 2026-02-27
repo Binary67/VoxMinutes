@@ -113,7 +113,7 @@
                   </div>
                   <span class="stat-meta">+12% vs last week</span>
                 </div>
-                <p class="stat-value">14.5 hrs</p>
+                <p id="total-recorded-time-value" class="stat-value">0 min</p>
                 <p class="stat-label">Total recorded time</p>
               </article>
 
@@ -207,6 +207,48 @@
             </button>
             <button id="meeting-modal-submit-btn" type="submit" class="modal-btn primary">
               Continue
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="rename-meeting-modal-backdrop" class="modal-backdrop" hidden>
+      <section
+        id="rename-meeting-modal"
+        class="meeting-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rename-meeting-modal-title"
+        aria-describedby="rename-meeting-modal-description"
+      >
+        <header class="meeting-modal-header">
+          <h2 id="rename-meeting-modal-title">Rename Meeting</h2>
+          <p id="rename-meeting-modal-description">
+            Update the meeting title shown on your dashboard.
+          </p>
+        </header>
+
+        <form id="rename-meeting-form" class="meeting-modal-form">
+          <label class="meeting-modal-field">
+            <span>Meeting title</span>
+            <input
+              id="rename-meeting-title-input"
+              name="meetingTitle"
+              type="text"
+              maxlength="160"
+              required
+            />
+          </label>
+
+          <p id="rename-meeting-error" class="modal-error" hidden></p>
+
+          <div class="meeting-modal-actions">
+            <button id="rename-meeting-cancel-btn" type="button" class="modal-btn secondary">
+              Cancel
+            </button>
+            <button id="rename-meeting-submit-btn" type="submit" class="modal-btn primary">
+              Save
             </button>
           </div>
         </form>

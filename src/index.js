@@ -3,8 +3,10 @@ const path = require('node:path');
 const {
   appendTranscript,
   createTranscriptSession,
+  deleteTranscriptSession,
   listTranscriptSessions,
   loadTranscript,
+  renameTranscriptSession,
   renameSpeaker,
   transcribeSegment,
 } = require('./services/transcription-service');
@@ -47,6 +49,12 @@ function registerRecordingIpcHandlers() {
   ipcMain.handle('recording:transcribe-segment', async (_event, payload) => transcribeSegment(payload));
   ipcMain.handle('recording:append-transcript', async (_event, payload) => appendTranscript(payload));
   ipcMain.handle('recording:rename-speaker', async (_event, payload) => renameSpeaker(payload));
+  ipcMain.handle('recording:rename-session', async (_event, payload) =>
+    renameTranscriptSession(payload)
+  );
+  ipcMain.handle('recording:delete-session', async (_event, payload) =>
+    deleteTranscriptSession(payload)
+  );
   ipcMain.handle('recording:load-transcript', async (_event, payload) => loadTranscript(payload));
   ipcMain.handle('recording:list-sessions', async () => listTranscriptSessions());
 }

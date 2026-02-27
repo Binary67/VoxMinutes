@@ -9,6 +9,7 @@ const ENV_FILE_PATH = path.join(PROJECT_ROOT, '.env');
 const DEFAULT_MIME_TYPE = 'audio/webm';
 const DEFAULT_SOURCE_MODEL = 'gpt-4o-transcribe-diarize';
 const DEFAULT_PARTICIPANT_COUNT = 1;
+const MAX_MEETING_TITLE_LENGTH = 160;
 const DASHBOARD_SUMMARY_MAX_LENGTH = 220;
 
 let cachedWhisperConfig = null;
@@ -53,6 +54,22 @@ function normalizeParticipantCount(value) {
     return DEFAULT_PARTICIPANT_COUNT;
   }
   return numericValue;
+}
+
+function normalizeEditableMeetingTitle(value) {
+  const normalizedTitle = String(value || '')
+    .trim()
+    .replace(/\s+/gu, ' ');
+
+  if (!normalizedTitle) {
+    throw new Error('Meeting title cannot be empty.');
+  }
+
+  if (normalizedTitle.length > MAX_MEETING_TITLE_LENGTH) {
+    throw new Error(`Meeting title cannot exceed ${MAX_MEETING_TITLE_LENGTH} characters.`);
+  }
+
+  return normalizedTitle;
 }
 
 function parseEnvContent(content) {
@@ -1069,11 +1086,53 @@ async function renameSpeaker(payload) {
   return toPublicTranscriptDocument(document);
 }
 
+async function renameTranscriptSession(payload) {
+  const sessionId = payload && payload.sessionId;
+  assertValidSessionId(sessionId);
+
+  const meetingTitle = normalizeEditableMeetingTitle(payload && payload.meetingTitle);
+  let document;
+  try {
+    document = await readTranscriptDocument(sessionId);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw new Error('Transcript session was not found.');
+    }
+    throw error;
+  }
+  document.meetingTitle = meetingTitle;
+  document.updatedAt = new Date().toISOString();
+
+  await writeTranscriptDocument(sessionId, document);
+  return toSessionSummary(document);
+}
+
+async function deleteTranscriptSession(payload) {
+  const sessionId = payload && payload.sessionId;
+  assertValidSessionId(sessionId);
+
+  try {
+    await fs.unlink(getTranscriptFilePath(sessionId));
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw new Error('Transcript session was not found.');
+    }
+    throw error;
+  }
+
+  return {
+    sessionId,
+    deleted: true,
+  };
+}
+
 module.exports = {
   appendTranscript,
   createTranscriptSession,
+  deleteTranscriptSession,
   listTranscriptSessions,
   loadTranscript,
+  renameTranscriptSession,
   renameSpeaker,
   transcribeSegment,
 };
