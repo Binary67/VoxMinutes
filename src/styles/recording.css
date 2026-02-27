@@ -209,6 +209,11 @@
   background: var(--surface-muted);
 }
 
+.icon-control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .icon-control.is-muted {
   color: #a33434;
   border-color: var(--danger-border);
@@ -370,12 +375,32 @@
   font-weight: var(--fw-medium);
 }
 
-.transcript-speaker {
+.transcript-speaker-btn {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
   color: #5f6f88;
   font-weight: var(--fw-semibold);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
-.transcript-entry.is-you .transcript-speaker {
+.transcript-speaker-btn:hover {
+  text-decoration-color: currentColor;
+}
+
+.transcript-speaker-btn:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.45);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.transcript-entry.is-you .transcript-speaker-btn {
   color: #2c5f9d;
 }
 
@@ -389,6 +414,13 @@
   font-size: 1rem;
   line-height: 1.48;
   font-weight: var(--fw-medium);
+}
+
+.transcript-empty {
+  margin: 8px 0 0;
+  color: #67758c;
+  font-size: 0.96rem;
+  line-height: 1.45;
 }
 
 @keyframes recording-live-pulse {

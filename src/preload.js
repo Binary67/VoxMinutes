@@ -1,2 +1,23 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('recordingApi', {
+  createTranscriptSession() {
+    return ipcRenderer.invoke('recording:create-session');
+  },
+
+  transcribeSegment(payload) {
+    return ipcRenderer.invoke('recording:transcribe-segment', payload);
+  },
+
+  appendTranscript(payload) {
+    return ipcRenderer.invoke('recording:append-transcript', payload);
+  },
+
+  renameSpeaker(payload) {
+    return ipcRenderer.invoke('recording:rename-speaker', payload);
+  },
+
+  loadTranscript(payload) {
+    return ipcRenderer.invoke('recording:load-transcript', payload);
+  },
+});

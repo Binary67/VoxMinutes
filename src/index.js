@@ -1,5 +1,12 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('node:path');
+const {
+  appendTranscript,
+  createTranscriptSession,
+  loadTranscript,
+  renameSpeaker,
+  transcribeSegment,
+} = require('./services/transcription-service');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -24,10 +31,40 @@ const createWindow = () => {
   mainWindow.loadFile(path.join(__dirname, 'dashboard.html'));
 };
 
+let areRecordingHandlersRegistered = false;
+
+function registerRecordingIpcHandlers() {
+  if (areRecordingHandlersRegistered) {
+    return;
+  }
+
+  areRecordingHandlersRegistered = true;
+
+  ipcMain.handle('recording:create-session', async () => createTranscriptSession());
+  ipcMain.handle('recording:transcribe-segment', async (_event, payload) => transcribeSegment(payload));
+  ipcMain.handle('recording:append-transcript', async (_event, payload) => appendTranscript(payload));
+  ipcMain.handle('recording:rename-speaker', async (_event, payload) => renameSpeaker(payload));
+  ipcMain.handle('recording:load-transcript', async (_event, payload) => loadTranscript(payload));
+}
+
+function configureMediaPermissions() {
+  const supportedPermissions = new Set(['media', 'microphone', 'audioCapture']);
+
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
+    return supportedPermissions.has(permission);
+  });
+
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(supportedPermissions.has(permission));
+  });
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  registerRecordingIpcHandlers();
+  configureMediaPermissions();
   createWindow();
 
   // On OS X it's common to re-create a window in the app when the
