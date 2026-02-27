@@ -30,10 +30,6 @@
             <i class="bi bi-grid-1x2-fill"></i>
             <span>Dashboard</span>
           </a>
-          <a href="recording.html" class="nav-item">
-            <i class="bi bi-record-circle"></i>
-            <span>Recording</span>
-          </a>
           <button type="button" class="nav-item">
             <i class="bi bi-folder2-open"></i>
             <span>Folders</span>
@@ -102,10 +98,10 @@
                   />
                 </label>
 
-                <a href="recording.html" id="new-recording-btn" class="primary-btn">
+                <button id="new-recording-btn" type="button" class="primary-btn">
                   <i class="bi bi-plus-lg"></i>
                   <span>New Recording</span>
-                </a>
+                </button>
               </div>
             </header>
 
@@ -162,6 +158,59 @@
           </section>
         </div>
       </main>
+    </div>
+
+    <div id="new-recording-modal-backdrop" class="modal-backdrop" hidden>
+      <section
+        id="new-recording-modal"
+        class="meeting-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="meeting-modal-title"
+        aria-describedby="meeting-modal-description"
+      >
+        <header class="meeting-modal-header">
+          <h2 id="meeting-modal-title">Start New Recording</h2>
+          <p id="meeting-modal-description">
+            Add a quick meeting setup before opening the recording page.
+          </p>
+        </header>
+
+        <form id="new-recording-form" class="meeting-modal-form">
+          <label class="meeting-modal-field">
+            <span>Meeting title</span>
+            <input
+              id="meeting-title-input"
+              name="meetingTitle"
+              type="text"
+              maxlength="160"
+              placeholder="Leave blank to auto-name the meeting"
+            />
+          </label>
+
+          <label class="meeting-modal-field">
+            <span>Participants</span>
+            <input
+              id="meeting-participants-input"
+              name="participantCount"
+              type="number"
+              min="1"
+              step="1"
+              value="1"
+              required
+            />
+          </label>
+
+          <div class="meeting-modal-actions">
+            <button id="meeting-modal-cancel-btn" type="button" class="modal-btn secondary">
+              Cancel
+            </button>
+            <button id="meeting-modal-submit-btn" type="submit" class="modal-btn primary">
+              Continue
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
 
     <script src="ui-shared.js"></script>

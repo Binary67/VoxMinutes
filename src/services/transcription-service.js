@@ -8,11 +8,51 @@ const ENV_FILE_PATH = path.join(PROJECT_ROOT, '.env');
 
 const DEFAULT_MIME_TYPE = 'audio/webm';
 const DEFAULT_SOURCE_MODEL = 'gpt-4o-transcribe-diarize';
+const DEFAULT_PARTICIPANT_COUNT = 1;
+const DASHBOARD_SUMMARY_MAX_LENGTH = 220;
 
 let cachedWhisperConfig = null;
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseDateOrNull(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function formatDefaultMeetingTitle(dateValue) {
+  const date = parseDateOrNull(dateValue) || new Date();
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `Meeting ${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+function normalizeMeetingTitle(value, fallbackDateValue) {
+  const normalizedTitle = String(value || '')
+    .trim()
+    .replace(/\s+/gu, ' ');
+
+  if (normalizedTitle) {
+    return normalizedTitle;
+  }
+
+  return formatDefaultMeetingTitle(fallbackDateValue);
+}
+
+function normalizeParticipantCount(value) {
+  const numericValue = Number.parseInt(value, 10);
+  if (!Number.isFinite(numericValue) || numericValue < DEFAULT_PARTICIPANT_COUNT) {
+    return DEFAULT_PARTICIPANT_COUNT;
+  }
+  return numericValue;
 }
 
 function parseEnvContent(content) {
@@ -135,13 +175,17 @@ async function ensureTranscriptsDirectory() {
   await fs.mkdir(TRANSCRIPTS_DIR, { recursive: true });
 }
 
-function createTranscriptDocument(sessionId, sourceModel) {
+function createTranscriptDocument(sessionId, sourceModel, metadata = {}) {
   const nowIso = new Date().toISOString();
   return {
     sessionId,
     createdAt: nowIso,
     updatedAt: nowIso,
     sourceModel: sourceModel || DEFAULT_SOURCE_MODEL,
+    meetingTitle: normalizeMeetingTitle(metadata.meetingTitle, nowIso),
+    participantCount: normalizeParticipantCount(metadata.participantCount),
+    durationSec: null,
+    meetingSummary: '',
     speakerMap: {},
     segments: [],
     fullText: '',
@@ -154,17 +198,32 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
   }
 
   const nowIso = new Date().toISOString();
+  const createdAt = typeof value.createdAt === 'string' ? value.createdAt : nowIso;
+  const updatedAt = typeof value.updatedAt === 'string' ? value.updatedAt : nowIso;
+  const normalizedSegments = Array.isArray(value.segments) ? value.segments : [];
+  const fullText = typeof value.fullText === 'string' ? value.fullText : '';
+  const durationSec =
+    typeof value.durationSec === 'number' && Number.isFinite(value.durationSec) && value.durationSec >= 0
+      ? roundSeconds(value.durationSec)
+      : getTranscriptDurationSeconds(normalizedSegments);
+  const persistedMeetingSummary = typeof value.meetingSummary === 'string' ? value.meetingSummary.trim() : '';
+  const meetingSummary = persistedMeetingSummary || buildMeetingSummaryFromSegments(normalizedSegments);
+
   return {
     sessionId: typeof value.sessionId === 'string' ? value.sessionId : fallbackSessionId,
-    createdAt: typeof value.createdAt === 'string' ? value.createdAt : nowIso,
-    updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : nowIso,
+    createdAt,
+    updatedAt,
     sourceModel:
       typeof value.sourceModel === 'string' && value.sourceModel
         ? value.sourceModel
         : DEFAULT_SOURCE_MODEL,
+    meetingTitle: normalizeMeetingTitle(value.meetingTitle, createdAt),
+    participantCount: normalizeParticipantCount(value.participantCount),
+    durationSec,
+    meetingSummary,
     speakerMap: isPlainObject(value.speakerMap) ? value.speakerMap : {},
-    segments: Array.isArray(value.segments) ? value.segments : [],
-    fullText: typeof value.fullText === 'string' ? value.fullText : '',
+    segments: normalizedSegments,
+    fullText,
   };
 }
 
@@ -725,6 +784,30 @@ function getLastTimelineSecond(segments) {
   return latestSecond;
 }
 
+function buildMeetingSummaryFromSegments(segments) {
+  const combinedText = segments
+    .map((segment) => (isPlainObject(segment) ? String(segment.text || '').trim() : ''))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+
+  if (!combinedText) {
+    return '';
+  }
+
+  if (combinedText.length <= DASHBOARD_SUMMARY_MAX_LENGTH) {
+    return combinedText;
+  }
+
+  return `${combinedText.slice(0, DASHBOARD_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`;
+}
+
+function getTranscriptDurationSeconds(segments) {
+  const lastSecond = roundSeconds(getLastTimelineSecond(segments));
+  return lastSecond > 0 ? lastSecond : null;
+}
+
 function buildFullText(document) {
   return document.segments
     .map((segment) => {
@@ -732,6 +815,12 @@ function buildFullText(document) {
       return `${speakerName}: ${segment.text}`;
     })
     .join('\n');
+}
+
+function applyDerivedDocumentFields(document) {
+  document.fullText = buildFullText(document);
+  document.durationSec = getTranscriptDurationSeconds(document.segments);
+  document.meetingSummary = buildMeetingSummaryFromSegments(document.segments);
 }
 
 function createSegmentId(chunkIndex, segmentIndex) {
@@ -744,19 +833,95 @@ function toPublicTranscriptDocument(document) {
     createdAt: document.createdAt,
     updatedAt: document.updatedAt,
     sourceModel: document.sourceModel,
+    meetingTitle: document.meetingTitle,
+    participantCount: document.participantCount,
+    durationSec: document.durationSec,
+    meetingSummary: document.meetingSummary,
     speakerMap: document.speakerMap,
     segments: document.segments,
     fullText: document.fullText,
   };
 }
 
-async function createTranscriptSession() {
+function toSessionSummary(document) {
+  const segmentCount = document.segments.reduce((count, segment) => {
+    if (!isPlainObject(segment)) {
+      return count;
+    }
+    const text = String(segment.text || '').trim();
+    return text ? count + 1 : count;
+  }, 0);
+
+  return {
+    sessionId: document.sessionId,
+    meetingTitle: document.meetingTitle,
+    participantCount: document.participantCount,
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
+    durationSec: document.durationSec,
+    meetingSummary: document.meetingSummary,
+    segmentCount,
+  };
+}
+
+function toTimestampOrZero(value) {
+  const parsedDate = parseDateOrNull(value);
+  if (!parsedDate) {
+    return 0;
+  }
+  return parsedDate.getTime();
+}
+
+async function listTranscriptSessions() {
+  let directoryEntries;
+  try {
+    directoryEntries = await fs.readdir(TRANSCRIPTS_DIR, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+
+  const transcriptFiles = directoryEntries.filter(
+    (entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.json')
+  );
+
+  const sessionSummaries = [];
+  for (const transcriptFile of transcriptFiles) {
+    const sessionId = path.parse(transcriptFile.name).name;
+    try {
+      const document = await readTranscriptDocument(sessionId);
+      if (!Array.isArray(document.segments) || document.segments.length === 0) {
+        continue;
+      }
+      const sessionSummary = toSessionSummary(document);
+      if (sessionSummary.segmentCount === 0) {
+        continue;
+      }
+      sessionSummaries.push(sessionSummary);
+    } catch (_error) {
+      // Skip malformed transcript files without failing dashboard load.
+    }
+  }
+
+  sessionSummaries.sort((left, right) => {
+    const rightTimestamp = toTimestampOrZero(right.updatedAt);
+    const leftTimestamp = toTimestampOrZero(left.updatedAt);
+    return rightTimestamp - leftTimestamp;
+  });
+
+  return sessionSummaries;
+}
+
+async function createTranscriptSession(payload) {
   await ensureTranscriptsDirectory();
 
   const config = await loadWhisperConfig();
   const sessionId = createSessionId();
   const sourceModel = config.deploymentName || DEFAULT_SOURCE_MODEL;
-  const document = createTranscriptDocument(sessionId, sourceModel);
+  const sessionMetadata = isPlainObject(payload) ? payload : {};
+  const document = createTranscriptDocument(sessionId, sourceModel, sessionMetadata);
   const filePath = await writeTranscriptDocument(sessionId, document);
 
   return {
@@ -879,7 +1044,7 @@ async function appendTranscript(payload) {
 
   document.segments.push(...appendedSegments);
   document.updatedAt = createdAt;
-  document.fullText = buildFullText(document);
+  applyDerivedDocumentFields(document);
 
   await writeTranscriptDocument(sessionId, document);
   return toPublicTranscriptDocument(document);
@@ -898,7 +1063,7 @@ async function renameSpeaker(payload) {
   const document = await readTranscriptDocument(sessionId);
   document.speakerMap[speakerId] = displayName;
   document.updatedAt = new Date().toISOString();
-  document.fullText = buildFullText(document);
+  applyDerivedDocumentFields(document);
 
   await writeTranscriptDocument(sessionId, document);
   return toPublicTranscriptDocument(document);
@@ -907,6 +1072,7 @@ async function renameSpeaker(payload) {
 module.exports = {
   appendTranscript,
   createTranscriptSession,
+  listTranscriptSessions,
   loadTranscript,
   renameSpeaker,
   transcribeSegment,

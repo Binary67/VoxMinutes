@@ -3,6 +3,7 @@ const path = require('node:path');
 const {
   appendTranscript,
   createTranscriptSession,
+  listTranscriptSessions,
   loadTranscript,
   renameSpeaker,
   transcribeSegment,
@@ -40,11 +41,14 @@ function registerRecordingIpcHandlers() {
 
   areRecordingHandlersRegistered = true;
 
-  ipcMain.handle('recording:create-session', async () => createTranscriptSession());
+  ipcMain.handle('recording:create-session', async (_event, payload) =>
+    createTranscriptSession(payload)
+  );
   ipcMain.handle('recording:transcribe-segment', async (_event, payload) => transcribeSegment(payload));
   ipcMain.handle('recording:append-transcript', async (_event, payload) => appendTranscript(payload));
   ipcMain.handle('recording:rename-speaker', async (_event, payload) => renameSpeaker(payload));
   ipcMain.handle('recording:load-transcript', async (_event, payload) => loadTranscript(payload));
+  ipcMain.handle('recording:list-sessions', async () => listTranscriptSessions());
 }
 
 function configureMediaPermissions() {

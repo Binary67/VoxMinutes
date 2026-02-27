@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('recordingApi', {
-  createTranscriptSession() {
-    return ipcRenderer.invoke('recording:create-session');
+  createTranscriptSession(payload) {
+    return ipcRenderer.invoke('recording:create-session', payload);
   },
 
   transcribeSegment(payload) {
@@ -19,5 +19,9 @@ contextBridge.exposeInMainWorld('recordingApi', {
 
   loadTranscript(payload) {
     return ipcRenderer.invoke('recording:load-transcript', payload);
+  },
+
+  listTranscriptSessions() {
+    return ipcRenderer.invoke('recording:list-sessions');
   },
 });

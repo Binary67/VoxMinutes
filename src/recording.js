@@ -3,6 +3,8 @@ const { escapeHtml, renderDefaultTags, initializeSmartScrollbars, refreshScrolla
 
 const DEFAULT_AUDIO_MIME_TYPE = 'audio/webm';
 const MERGE_SPEAKER_GAP_SECONDS = 1.5;
+const DEFAULT_MEETING_TITLE = 'New Recording';
+const DEFAULT_RECORDING_SUBTITLE = 'Prepare your mic and press Start when ready.';
 
 const recordingModes = Object.freeze({
   IDLE: 'idle',
@@ -47,6 +49,8 @@ const recordingUiByMode = Object.freeze({
 
 const tagList = document.getElementById('tag-list');
 const recordingView = document.getElementById('recording-view');
+const recordingTitle = document.getElementById('recording-title');
+const recordingSubtitle = document.getElementById('recording-subtitle');
 const recordingStatusTextInline = document.getElementById('recording-status-text-inline');
 const recordingLiveDot = document.getElementById('recording-live-dot');
 const tinySignalMeter = document.getElementById('tiny-signal-meter');
@@ -73,12 +77,67 @@ const recordingState = {
   mimeType: DEFAULT_AUDIO_MIME_TYPE,
   errorMessage: '',
   statusOverrideText: '',
+  meetingTitle: DEFAULT_MEETING_TITLE,
+  participantCount: 1,
+  showParticipantSubtitle: false,
 };
 
 let recordingTimerId = null;
 
 function hasRecordingApi() {
   return Boolean(window.recordingApi);
+}
+
+function normalizeMeetingTitle(value) {
+  return String(value || '')
+    .trim()
+    .replace(/\s+/gu, ' ');
+}
+
+function normalizeParticipantCount(value) {
+  const numericValue = Number.parseInt(value, 10);
+  if (!Number.isFinite(numericValue) || numericValue < 1) {
+    return 1;
+  }
+  return numericValue;
+}
+
+function getRecordingContextFromQuery() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const titleValue = searchParams.get('title');
+  const participantValue = searchParams.get('participants');
+  const meetingTitle = normalizeMeetingTitle(titleValue);
+  const participantCount = normalizeParticipantCount(participantValue);
+
+  return {
+    meetingTitle,
+    participantCount,
+    showParticipantSubtitle: participantValue !== null,
+  };
+}
+
+function getRecordingSubtitle(participantCount, showParticipantSubtitle) {
+  if (!showParticipantSubtitle) {
+    return DEFAULT_RECORDING_SUBTITLE;
+  }
+
+  if (participantCount === 1) {
+    return '1 person in this meeting.';
+  }
+
+  if (participantCount > 1) {
+    return `${participantCount} people in this meeting.`;
+  }
+
+  return DEFAULT_RECORDING_SUBTITLE;
+}
+
+function applyRecordingContext() {
+  recordingTitle.textContent = recordingState.meetingTitle || DEFAULT_MEETING_TITLE;
+  recordingSubtitle.textContent = getRecordingSubtitle(
+    recordingState.participantCount,
+    recordingState.showParticipantSubtitle
+  );
 }
 
 function formatTimerPart(value) {
@@ -515,9 +574,14 @@ async function ensureTranscriptSession() {
     return;
   }
 
-  const sessionData = await window.recordingApi.createTranscriptSession();
+  const sessionData = await window.recordingApi.createTranscriptSession({
+    meetingTitle: recordingState.meetingTitle,
+    participantCount: recordingState.participantCount,
+  });
   recordingState.sessionId = sessionData.sessionId;
   recordingState.transcriptDocument = sessionData.document;
+  recordingState.meetingTitle = normalizeMeetingTitle(sessionData.document.meetingTitle);
+  applyRecordingContext();
   renderTranscriptFromDocument(sessionData.document);
 }
 
@@ -729,7 +793,13 @@ function initializeRecordingControls() {
 }
 
 function initializeRecordingPage() {
+  const recordingContext = getRecordingContextFromQuery();
+  recordingState.meetingTitle = recordingContext.meetingTitle;
+  recordingState.participantCount = recordingContext.participantCount;
+  recordingState.showParticipantSubtitle = recordingContext.showParticipantSubtitle;
+
   renderDefaultTags(tagList);
+  applyRecordingContext();
   renderEmptyTranscript();
   updateTimerDisplay();
   applyRecordingState();
