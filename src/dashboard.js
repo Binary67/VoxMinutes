@@ -1,5 +1,16 @@
-const { escapeHtml, renderDefaultTags, initializeSmartScrollbars, refreshScrollableState } =
-  window.uiShared;
+const {
+  escapeHtml,
+  renderDefaultTags,
+  initializeSmartScrollbars,
+  refreshScrollableState,
+  normalizeParticipantCount,
+  formatParticipantLabel,
+  formatMeetingDate,
+  formatMeetingDuration,
+  toFiniteDurationSeconds,
+  buildMeetingsHref,
+  buildMeetingDetailsHref,
+} = window.uiShared;
 
 const meetingVisuals = Object.freeze({
   accent: '#0a84ff',
@@ -32,6 +43,7 @@ const meetingsGrid = document.getElementById('meetings-grid');
 const emptyState = document.getElementById('empty-state');
 const searchInput = document.getElementById('search-input');
 const totalRecordedTimeValue = document.getElementById('total-recorded-time-value');
+const viewAllMeetingsButton = document.querySelector('.view-all-btn');
 
 const newRecordingButton = document.getElementById('new-recording-btn');
 const modalBackdrop = document.getElementById('new-recording-modal-backdrop');
@@ -62,63 +74,6 @@ function hasMeetingActionsApi() {
   );
 }
 
-function normalizeParticipantCount(value) {
-  const numericValue = Number.parseInt(value, 10);
-  if (!Number.isFinite(numericValue) || numericValue < 1) {
-    return 1;
-  }
-  return numericValue;
-}
-
-function formatParticipantLabel(participantCount) {
-  const normalizedCount = normalizeParticipantCount(participantCount);
-  return `${normalizedCount} ${normalizedCount === 1 ? 'person' : 'people'}`;
-}
-
-function formatMeetingDate(dateValue) {
-  if (typeof dateValue === 'string') {
-    const parsedDate = new Date(dateValue);
-    if (!Number.isNaN(parsedDate.getTime())) {
-      return parsedDate.toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    }
-  }
-
-  return 'Unknown date';
-}
-
-function formatMeetingDuration(durationSec) {
-  if (typeof durationSec !== 'number' || !Number.isFinite(durationSec) || durationSec <= 0) {
-    return '--';
-  }
-
-  const totalSeconds = Math.round(durationSec);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours} hr ${minutes} min`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes} min`;
-  }
-
-  return `${seconds} sec`;
-}
-
-function toFiniteDurationSeconds(value) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return 0;
-  }
-
-  return value;
-}
-
 function getTotalRecordedSeconds(meetings) {
   return meetings.reduce((totalSeconds, meeting) => {
     return totalSeconds + toFiniteDurationSeconds(meeting && meeting.durationSec);
@@ -147,6 +102,9 @@ function getFallbackSummary() {
 function createMeetingCard(meeting) {
   const sessionId = String(meeting.sessionId || '').trim();
   const escapedSessionId = escapeHtml(sessionId);
+  const cardAttributes = sessionId
+    ? `data-session-id="${escapedSessionId}" role="link" tabindex="0"`
+    : '';
   const isOptionsMenuOpen = sessionId && dashboardState.openMenuSessionId === sessionId;
   const title = escapeHtml(String(meeting.meetingTitle || 'Untitled meeting'));
   const date = escapeHtml(formatMeetingDate(meeting.updatedAt));
@@ -184,7 +142,11 @@ function createMeetingCard(meeting) {
       `;
 
   return `
-    <article class="meeting-card" style="--accent: ${escapeHtml(meetingVisuals.accent)}; --icon-bg: ${escapeHtml(meetingVisuals.iconBg)};">
+    <article
+      class="meeting-card${sessionId ? ' is-clickable' : ''}"
+      ${cardAttributes}
+      style="--accent: ${escapeHtml(meetingVisuals.accent)}; --icon-bg: ${escapeHtml(meetingVisuals.iconBg)};"
+    >
       <div class="meeting-top">
         <div class="meeting-icon">
           <i class="bi ${escapeHtml(meetingVisuals.icon)}"></i>
@@ -405,29 +367,63 @@ function initializeMeetingActions() {
     }
 
     const menuActionButton = event.target.closest('.meeting-menu-item');
-    if (!menuActionButton) {
+    if (menuActionButton) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const action = String(menuActionButton.dataset.action || '').trim();
+      const sessionId = String(menuActionButton.dataset.sessionId || '').trim();
+      if (!action || !sessionId) {
+        return;
+      }
+
+      closeMeetingOptionsMenu();
+
+      if (action === 'rename') {
+        void renameMeeting(sessionId);
+        return;
+      }
+
+      if (action === 'delete') {
+        void deleteMeeting(sessionId);
+      }
+      return;
+    }
+
+    const clickableMeetingCard = event.target.closest('.meeting-card[data-session-id]');
+    if (!clickableMeetingCard || event.target.closest('.meeting-options')) {
+      return;
+    }
+
+    const clickedSessionId = String(clickableMeetingCard.dataset.sessionId || '').trim();
+    if (!clickedSessionId) {
+      return;
+    }
+
+    navigateToMeetingDetails(clickedSessionId);
+  });
+
+  meetingsGrid.addEventListener('keydown', (event) => {
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    const clickableMeetingCard = event.target.closest('.meeting-card[data-session-id]');
+    if (!clickableMeetingCard || event.target.closest('.meeting-options')) {
       return;
     }
 
     event.preventDefault();
-    event.stopPropagation();
-
-    const action = String(menuActionButton.dataset.action || '').trim();
-    const sessionId = String(menuActionButton.dataset.sessionId || '').trim();
-    if (!action || !sessionId) {
+    const clickedSessionId = String(clickableMeetingCard.dataset.sessionId || '').trim();
+    if (!clickedSessionId) {
       return;
     }
 
-    closeMeetingOptionsMenu();
-
-    if (action === 'rename') {
-      void renameMeeting(sessionId);
-      return;
-    }
-
-    if (action === 'delete') {
-      void deleteMeeting(sessionId);
-    }
+    navigateToMeetingDetails(clickedSessionId);
   });
 
   document.addEventListener('click', (event) => {
@@ -453,6 +449,16 @@ function initializeMeetingActions() {
 
     event.preventDefault();
     closeMeetingOptionsMenu();
+  });
+}
+
+function initializeMeetingNavigation() {
+  if (!viewAllMeetingsButton) {
+    return;
+  }
+
+  viewAllMeetingsButton.addEventListener('click', () => {
+    window.location.href = buildMeetingsHref();
   });
 }
 
@@ -698,6 +704,15 @@ function handleModalKeyboard(event) {
   }
 }
 
+function navigateToMeetingDetails(sessionId) {
+  const normalizedSessionId = String(sessionId || '').trim();
+  if (!normalizedSessionId) {
+    return;
+  }
+
+  window.location.href = buildMeetingDetailsHref(normalizedSessionId);
+}
+
 function navigateToRecordingPage(meetingTitle, participantCount) {
   const queryParams = new URLSearchParams();
   if (meetingTitle) {
@@ -758,6 +773,7 @@ function initializeModal() {
 async function initializeDashboard() {
   renderDefaultTags(tagList);
   initializeSearch();
+  initializeMeetingNavigation();
   initializeMeetingActions();
   initializeModal();
   initializeSmartScrollbars();

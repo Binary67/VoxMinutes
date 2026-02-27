@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meeting Details | AI Notes</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="styles/foundation.css" />
+    <link rel="stylesheet" href="styles/layout.css" />
+    <link rel="stylesheet" href="styles/dashboard.css" />
+    <link rel="stylesheet" href="styles/transcript-panel.css" />
+    <link rel="stylesheet" href="styles/meeting-details.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar scroll-fade" aria-label="Sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <i class="bi bi-soundwave"></i>
+          </div>
+          <div>
+            <p class="brand-title">AI Notes</p>
+            <p class="brand-subtitle">Pro Workspace</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Primary">
+          <a href="dashboard.html" class="nav-item">
+            <i class="bi bi-grid-1x2-fill"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="meetings.html" class="nav-item is-active" aria-current="page">
+            <i class="bi bi-camera-video"></i>
+            <span>Meetings</span>
+          </a>
+          <button type="button" class="nav-item">
+            <i class="bi bi-star"></i>
+            <span>Favorites</span>
+          </button>
+        </nav>
+
+        <section class="tags-section" aria-label="Tags">
+          <p class="section-label">Tags</p>
+          <ul id="tag-list" class="tag-list"></ul>
+        </section>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-footer">
+          <button type="button" class="settings-link">
+            <i class="bi bi-gear"></i>
+            <span>Settings</span>
+          </button>
+
+          <section class="storage-card" aria-label="Storage usage">
+            <div class="storage-head">
+              <span>Storage</span>
+              <span>75%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width: 75%"></div>
+            </div>
+            <button type="button" class="upgrade-btn">Upgrade Plan</button>
+          </section>
+
+          <div class="profile-card" aria-label="Current user">
+            <div class="profile-avatar">AM</div>
+            <div class="profile-meta">
+              <strong>Alex Morgan</strong>
+              <span>alex@workspace.com</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-panel scroll-fade">
+        <div class="panel-frame">
+          <section class="view-panel meeting-details-view">
+            <header class="details-header">
+              <a href="meetings.html" class="details-back-link">
+                <i class="bi bi-arrow-left"></i>
+                <span>Back to Meetings</span>
+              </a>
+              <h1 id="meeting-title">Meeting Details</h1>
+              <p id="meeting-meta">Loading meeting details...</p>
+            </header>
+
+            <div id="meeting-content-layout" class="meeting-content-layout">
+              <section class="transcript-section transcript-pane">
+                <div class="transcript-header">
+                  <p class="transcript-title">
+                    <i class="bi bi-card-text"></i>
+                    <span>Full Transcript</span>
+                  </p>
+                </div>
+                <div
+                  id="meeting-transcript-feed"
+                  class="transcript-feed scroll-fade"
+                  aria-live="polite"
+                ></div>
+              </section>
+
+              <aside class="insights-pane" aria-label="AI Insights">
+                <div class="insights-head">
+                  <p class="insights-title">
+                    <i class="bi bi-stars"></i>
+                    <span>AI Insights</span>
+                  </p>
+                  <button id="generate-insights-btn" type="button" class="generate-insights-btn">
+                    Generate
+                  </button>
+                </div>
+
+                <p id="insights-placeholder-status" class="insights-status" hidden></p>
+
+                <section class="insight-block">
+                  <p class="insight-block-label">Summary</p>
+                  <p class="insight-block-text">Not generated yet.</p>
+                </section>
+
+                <section class="insight-block">
+                  <p class="insight-block-label">Key Decisions</p>
+                  <p class="insight-block-text">Not generated yet.</p>
+                </section>
+
+                <section class="insight-block">
+                  <p class="insight-block-label">Action Items</p>
+                  <p class="insight-block-text">Not generated yet.</p>
+                </section>
+              </aside>
+            </div>
+
+            <p id="meeting-details-empty-state" class="empty-state" hidden></p>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="ui-shared.js"></script>
+    <script src="transcript-renderer.js"></script>
+    <script src="meeting-details.js"></script>
+  </body>
+</html>

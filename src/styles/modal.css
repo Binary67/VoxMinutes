@@ -1,0 +1,133 @@
+body.has-open-modal .app-shell {
+  filter: blur(2px);
+}
+
+body.has-open-modal {
+  overflow: hidden;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 24, 39, 0.32);
+  backdrop-filter: blur(2px);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.meeting-modal {
+  width: min(100%, 420px);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+}
+
+.meeting-modal-header h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 1.12rem + 0.4vw, 1.45rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.meeting-modal-header p {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  font-weight: var(--fw-medium);
+}
+
+.meeting-modal-form {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.meeting-modal-field {
+  display: grid;
+  gap: 7px;
+}
+
+.meeting-modal-field span {
+  color: #5e687b;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-semibold);
+}
+
+.meeting-modal-field input {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: var(--fs-body);
+  line-height: 1.3;
+}
+
+.meeting-modal-actions {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-error {
+  margin: 2px 0 0;
+  color: #b42318;
+  font-size: var(--fs-meta);
+  line-height: 1.35;
+  font-weight: var(--fw-semibold);
+}
+
+.modal-btn {
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.modal-btn.secondary {
+  border-color: var(--border-soft);
+  background: var(--surface-solid);
+  color: #4f6078;
+}
+
+.modal-btn.secondary:hover {
+  background: var(--surface-muted);
+}
+
+.modal-btn.primary {
+  background: var(--brand);
+  color: var(--text-on-accent);
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.2);
+}
+
+.modal-btn.primary:hover {
+  background: var(--brand-deep);
+}
+
+@media (max-width: 760px) {
+  .meeting-modal {
+    padding: 16px;
+  }
+
+  .meeting-modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .modal-btn {
+    flex: 1 1 130px;
+    justify-content: center;
+  }
+}

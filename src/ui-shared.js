@@ -16,6 +16,90 @@
   const SCROLL_HIDE_DELAY_MS = 700;
   const scrollHideTimeouts = new WeakMap();
 
+  function normalizeParticipantCount(value) {
+    const numericValue = Number.parseInt(value, 10);
+    if (!Number.isFinite(numericValue) || numericValue < 1) {
+      return 1;
+    }
+    return numericValue;
+  }
+
+  function formatParticipantLabel(participantCount) {
+    const normalizedCount = normalizeParticipantCount(participantCount);
+    return `${normalizedCount} ${normalizedCount === 1 ? 'person' : 'people'}`;
+  }
+
+  function formatMeetingDate(dateValue) {
+    if (typeof dateValue === 'string') {
+      const parsedDate = new Date(dateValue);
+      if (!Number.isNaN(parsedDate.getTime())) {
+        return parsedDate.toLocaleDateString([], {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        });
+      }
+    }
+
+    return 'Unknown date';
+  }
+
+  function formatMeetingDuration(durationSec) {
+    if (typeof durationSec !== 'number' || !Number.isFinite(durationSec) || durationSec <= 0) {
+      return '--';
+    }
+
+    const totalSeconds = Math.round(durationSec);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours} hr ${minutes} min`;
+    }
+
+    if (minutes > 0) {
+      return `${minutes} min`;
+    }
+
+    return `${seconds} sec`;
+  }
+
+  function toFiniteDurationSeconds(value) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+
+    return value;
+  }
+
+  function buildMeetingsHref() {
+    return 'meetings.html';
+  }
+
+  function buildMeetingDetailsHref(sessionId) {
+    const normalizedSessionId = String(sessionId || '').trim();
+    if (!normalizedSessionId) {
+      return 'meeting-details.html';
+    }
+
+    const queryParams = new URLSearchParams();
+    queryParams.set('sessionId', normalizedSessionId);
+    return `meeting-details.html?${queryParams.toString()}`;
+  }
+
+  function parseSessionIdFromQuery(search) {
+    const searchValue =
+      typeof search === 'string'
+        ? search
+        : window.location && typeof window.location.search === 'string'
+          ? window.location.search
+          : '';
+
+    const queryParams = new URLSearchParams(searchValue);
+    return String(queryParams.get('sessionId') || '').trim();
+  }
+
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => escapeMap[char]);
   }
@@ -92,5 +176,13 @@
     renderDefaultTags,
     initializeSmartScrollbars,
     refreshScrollableState,
+    normalizeParticipantCount,
+    formatParticipantLabel,
+    formatMeetingDate,
+    formatMeetingDuration,
+    toFiniteDurationSeconds,
+    buildMeetingsHref,
+    buildMeetingDetailsHref,
+    parseSessionIdFromQuery,
   };
 })();

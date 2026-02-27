@@ -1,8 +1,6 @@
-const { escapeHtml, renderDefaultTags, initializeSmartScrollbars, refreshScrollableState } =
-  window.uiShared;
+const { renderDefaultTags, initializeSmartScrollbars, normalizeParticipantCount } = window.uiShared;
 
 const DEFAULT_AUDIO_MIME_TYPE = 'audio/webm';
-const MERGE_SPEAKER_GAP_SECONDS = 1.5;
 const DEFAULT_MEETING_TITLE = 'New Recording';
 const DEFAULT_RECORDING_SUBTITLE = 'Prepare your mic and press Start when ready.';
 
@@ -61,9 +59,17 @@ const micToggleButton = document.getElementById('mic-toggle-btn');
 const startRecordingButton = document.getElementById('start-recording-btn');
 const stopRecordingButton = document.getElementById('stop-recording-btn');
 const transcriptFeed = document.getElementById('transcript-feed');
+const renameSpeakerModalBackdrop = document.getElementById('rename-speaker-modal-backdrop');
+const renameSpeakerModal = document.getElementById('rename-speaker-modal');
+const renameSpeakerForm = document.getElementById('rename-speaker-form');
+const renameSpeakerInput = document.getElementById('rename-speaker-input');
+const renameSpeakerError = document.getElementById('rename-speaker-error');
+const renameSpeakerCancelButton = document.getElementById('rename-speaker-cancel-btn');
+const renameSpeakerSubmitButton = document.getElementById('rename-speaker-submit-btn');
 const micToggleButtonIcon = micToggleButton.querySelector('i');
 const startRecordingButtonIcon = startRecordingButton.querySelector('i');
 const startRecordingButtonText = startRecordingButton.querySelector('span');
+const transcriptRenderer = window.transcriptRenderer;
 
 const recordingState = {
   mode: recordingModes.IDLE,
@@ -82,24 +88,27 @@ const recordingState = {
   showParticipantSubtitle: false,
 };
 
+const renameSpeakerState = {
+  isOpen: false,
+  isSaving: false,
+  speakerId: '',
+  currentDisplayName: '',
+};
+
 let recordingTimerId = null;
 
 function hasRecordingApi() {
   return Boolean(window.recordingApi);
 }
 
+function hasRenameSpeakerApi() {
+  return Boolean(window.recordingApi && typeof window.recordingApi.renameSpeaker === 'function');
+}
+
 function normalizeMeetingTitle(value) {
   return String(value || '')
     .trim()
     .replace(/\s+/gu, ' ');
-}
-
-function normalizeParticipantCount(value) {
-  const numericValue = Number.parseInt(value, 10);
-  if (!Number.isFinite(numericValue) || numericValue < 1) {
-    return 1;
-  }
-  return numericValue;
 }
 
 function getRecordingContextFromQuery() {
@@ -366,207 +375,37 @@ function getErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
-function toFiniteSecond(value) {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+function renderEmptyTranscript(message = 'No transcription yet. Click Start and Stop to process audio.') {
+  if (transcriptRenderer && typeof transcriptRenderer.renderEmptyTranscript === 'function') {
+    transcriptRenderer.renderEmptyTranscript(transcriptFeed, message);
+    return;
+  }
+
+  transcriptFeed.textContent = message;
 }
 
-function formatTranscriptOffset(seconds) {
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) {
-    return '';
+function renderTranscriptFromDocument(document) {
+  if (!transcriptRenderer || typeof transcriptRenderer.renderTranscriptFromDocument !== 'function') {
+    renderEmptyTranscript();
+    return;
   }
 
-  const total = Math.floor(seconds);
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const remainder = total % 60;
-
-  if (hours > 0) {
-    return `${formatTimerPart(hours)}:${formatTimerPart(minutes)}:${formatTimerPart(remainder)}`;
-  }
-
-  return `${formatTimerPart(minutes)}:${formatTimerPart(remainder)}`;
-}
-
-function formatTranscriptTime(seconds, createdAt) {
-  const transcriptOffset = formatTranscriptOffset(seconds);
-  if (transcriptOffset) {
-    return transcriptOffset;
-  }
-
-  if (typeof createdAt === 'string') {
-    const parsedDate = new Date(createdAt);
-    if (!Number.isNaN(parsedDate.getTime())) {
-      return parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-  }
-
-  return '--:--';
-}
-
-function formatTranscriptTimeRange(startSec, endSec, createdAt) {
-  const startLabel = formatTranscriptTime(startSec, createdAt);
-  const startOffset = formatTranscriptOffset(startSec);
-  const endOffset = formatTranscriptOffset(endSec);
-
-  if (startOffset && endOffset && startOffset !== endOffset) {
-    return `${startOffset}-${endOffset}`;
-  }
-
-  return startLabel;
+  transcriptRenderer.renderTranscriptFromDocument(transcriptFeed, document, {
+    interactiveSpeakerNames: true,
+    emptyMessage: 'No transcription yet. Click Start and Stop to process audio.',
+  });
 }
 
 function getSpeakerDisplayName(speakerMap, speakerId) {
+  if (transcriptRenderer && typeof transcriptRenderer.getSpeakerDisplayName === 'function') {
+    return transcriptRenderer.getSpeakerDisplayName(speakerMap, speakerId);
+  }
+
   if (speakerMap && typeof speakerMap[speakerId] === 'string' && speakerMap[speakerId].trim()) {
     return speakerMap[speakerId].trim();
   }
 
   return 'Speaker';
-}
-
-function buildSpeakerInitials(name) {
-  const parts = String(name || '')
-    .trim()
-    .split(/\s+/u)
-    .filter(Boolean);
-
-  if (parts.length === 0) {
-    return 'SP';
-  }
-
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-}
-
-function renderEmptyTranscript(message = 'No transcription yet. Click Start and Stop to process audio.') {
-  transcriptFeed.innerHTML = `<p class="transcript-empty">${escapeHtml(message)}</p>`;
-  refreshScrollableState();
-}
-
-function joinTranscriptText(currentText, nextText) {
-  const left = String(currentText || '').trim();
-  const right = String(nextText || '').trim();
-
-  if (!left) {
-    return right;
-  }
-  if (!right) {
-    return left;
-  }
-
-  if (/^[.,!?;:%)\]}]+/u.test(right)) {
-    return `${left}${right}`;
-  }
-
-  return `${left} ${right}`;
-}
-
-function canMergeAdjacentSegments(previousSegment, nextSegment) {
-  if (!previousSegment || !nextSegment) {
-    return false;
-  }
-
-  if (previousSegment.speakerId !== nextSegment.speakerId) {
-    return false;
-  }
-
-  const previousEnd = previousSegment.endSec;
-  const nextStart = nextSegment.startSec;
-
-  if (previousEnd !== null && nextStart !== null) {
-    return nextStart - previousEnd <= MERGE_SPEAKER_GAP_SECONDS;
-  }
-
-  return true;
-}
-
-function mergeDisplaySegments(segments) {
-  const mergedSegments = [];
-
-  segments.forEach((segment) => {
-    const text = String(segment.text || '').trim();
-    if (!text) {
-      return;
-    }
-
-    const normalizedSpeakerId = String(segment.speakerId || '').trim() || 'speaker_1';
-    const normalizedSegment = {
-      speakerId: normalizedSpeakerId,
-      startSec: toFiniteSecond(segment.startSec),
-      endSec: toFiniteSecond(segment.endSec),
-      text,
-      createdAt: typeof segment.createdAt === 'string' ? segment.createdAt : null,
-    };
-
-    const previousSegment = mergedSegments[mergedSegments.length - 1];
-    if (!canMergeAdjacentSegments(previousSegment, normalizedSegment)) {
-      mergedSegments.push(normalizedSegment);
-      return;
-    }
-
-    previousSegment.text = joinTranscriptText(previousSegment.text, normalizedSegment.text);
-    if (previousSegment.startSec === null && normalizedSegment.startSec !== null) {
-      previousSegment.startSec = normalizedSegment.startSec;
-    }
-    if (normalizedSegment.endSec !== null) {
-      previousSegment.endSec = normalizedSegment.endSec;
-    }
-  });
-
-  return mergedSegments;
-}
-
-function renderTranscriptFromDocument(document) {
-  if (!document || !Array.isArray(document.segments) || document.segments.length === 0) {
-    renderEmptyTranscript();
-    return;
-  }
-
-  const speakerMap = document.speakerMap || {};
-  const displaySegments = mergeDisplaySegments(document.segments);
-
-  if (displaySegments.length === 0) {
-    renderEmptyTranscript();
-    return;
-  }
-
-  const transcriptMarkup = displaySegments
-    .map((segment) => {
-      const speakerId = String(segment.speakerId || '').trim();
-      const speakerName = getSpeakerDisplayName(speakerMap, speakerId);
-      const initials = buildSpeakerInitials(speakerName);
-      const transcriptTime = formatTranscriptTimeRange(
-        segment.startSec,
-        segment.endSec,
-        segment.createdAt
-      );
-
-      return `
-        <article class="transcript-entry">
-          <span class="transcript-avatar">${escapeHtml(initials)}</span>
-          <div class="transcript-content">
-            <p class="transcript-meta">
-              <button
-                type="button"
-                class="transcript-speaker-btn"
-                data-speaker-id="${escapeHtml(speakerId)}"
-                aria-label="Rename ${escapeHtml(speakerName)}"
-              >
-                ${escapeHtml(speakerName)}
-              </button>
-              <span class="transcript-time">${escapeHtml(transcriptTime)}</span>
-            </p>
-            <p class="transcript-text">${escapeHtml(String(segment.text || ''))}</p>
-          </div>
-        </article>
-      `;
-    })
-    .join('');
-
-  transcriptFeed.innerHTML = transcriptMarkup;
-  refreshScrollableState();
 }
 
 async function ensureTranscriptSession() {
@@ -590,6 +429,7 @@ async function startRecording() {
     return;
   }
 
+  closeRenameSpeakerModal({ force: true });
   setMode(recordingModes.PROCESSING);
   setStatusOverride('Preparing recording...');
   applyRecordingState();
@@ -704,12 +544,97 @@ function toggleMicrophone() {
   updateMicButton(recordingState.mode);
 }
 
-async function renameSpeaker(eventTarget) {
-  if (!(eventTarget instanceof Element)) {
+function resetRenameSpeakerState() {
+  renameSpeakerState.isOpen = false;
+  renameSpeakerState.isSaving = false;
+  renameSpeakerState.speakerId = '';
+  renameSpeakerState.currentDisplayName = '';
+}
+
+function setRenameSpeakerError(message) {
+  if (!renameSpeakerError) {
     return;
   }
 
-  if (!hasRecordingApi()) {
+  const normalizedMessage = String(message || '').trim();
+  renameSpeakerError.textContent = normalizedMessage;
+  renameSpeakerError.hidden = !normalizedMessage;
+}
+
+function setRenameSpeakerFormDisabled(isDisabled) {
+  renameSpeakerState.isSaving = isDisabled;
+
+  if (renameSpeakerInput) {
+    renameSpeakerInput.disabled = isDisabled;
+  }
+  if (renameSpeakerCancelButton) {
+    renameSpeakerCancelButton.disabled = isDisabled;
+  }
+  if (renameSpeakerSubmitButton) {
+    renameSpeakerSubmitButton.disabled = isDisabled;
+  }
+}
+
+function openRenameSpeakerModal(speakerId, currentSpeakerName) {
+  if (!renameSpeakerModalBackdrop || !renameSpeakerModal || !renameSpeakerInput) {
+    return false;
+  }
+
+  renameSpeakerState.isOpen = true;
+  renameSpeakerState.speakerId = String(speakerId || '').trim();
+  renameSpeakerState.currentDisplayName = String(currentSpeakerName || '').trim();
+  setRenameSpeakerError('');
+  setRenameSpeakerFormDisabled(false);
+  renameSpeakerInput.value = renameSpeakerState.currentDisplayName;
+  renameSpeakerModalBackdrop.hidden = false;
+  document.body.classList.add('has-open-modal');
+  renameSpeakerInput.focus({ preventScroll: true });
+  renameSpeakerInput.select();
+  return true;
+}
+
+function closeRenameSpeakerModal(options = {}) {
+  const forceClose = Boolean(options.force);
+  if (!renameSpeakerState.isOpen) {
+    return;
+  }
+
+  if (renameSpeakerState.isSaving && !forceClose) {
+    return;
+  }
+
+  if (renameSpeakerModalBackdrop) {
+    renameSpeakerModalBackdrop.hidden = true;
+  }
+  document.body.classList.remove('has-open-modal');
+  if (renameSpeakerInput) {
+    renameSpeakerInput.value = '';
+    renameSpeakerInput.disabled = false;
+  }
+  if (renameSpeakerCancelButton) {
+    renameSpeakerCancelButton.disabled = false;
+  }
+  if (renameSpeakerSubmitButton) {
+    renameSpeakerSubmitButton.disabled = false;
+  }
+  setRenameSpeakerError('');
+  resetRenameSpeakerState();
+}
+
+function getRenameSpeakerButton(eventTarget) {
+  if (eventTarget instanceof Element) {
+    return eventTarget.closest('.transcript-speaker-btn');
+  }
+
+  if (eventTarget instanceof Node && eventTarget.parentElement instanceof Element) {
+    return eventTarget.parentElement.closest('.transcript-speaker-btn');
+  }
+
+  return null;
+}
+
+function beginSpeakerRename(eventTarget) {
+  if (!hasRenameSpeakerApi()) {
     return;
   }
 
@@ -721,7 +646,7 @@ async function renameSpeaker(eventTarget) {
     return;
   }
 
-  const renameButton = eventTarget.closest('.transcript-speaker-btn');
+  const renameButton = getRenameSpeakerButton(eventTarget);
   if (!renameButton) {
     return;
   }
@@ -732,22 +657,58 @@ async function renameSpeaker(eventTarget) {
   }
 
   const currentSpeakerName = getSpeakerDisplayName(recordingState.transcriptDocument.speakerMap, speakerId);
-  const nextSpeakerName = window.prompt('Rename speaker', currentSpeakerName);
-  if (nextSpeakerName === null) {
+  openRenameSpeakerModal(speakerId, currentSpeakerName);
+}
+
+async function submitSpeakerRename(event) {
+  event.preventDefault();
+
+  if (!hasRenameSpeakerApi()) {
+    setRenameSpeakerError('Speaker rename is unavailable.');
     return;
   }
 
-  const trimmedSpeakerName = nextSpeakerName.trim();
-  if (!trimmedSpeakerName || trimmedSpeakerName === currentSpeakerName) {
+  if (renameSpeakerState.isSaving) {
     return;
   }
+
+  const sessionId = String(recordingState.sessionId || '').trim();
+  if (!sessionId) {
+    setRenameSpeakerError('Transcript session is unavailable.');
+    return;
+  }
+
+  const speakerId = String(renameSpeakerState.speakerId || '').trim();
+  if (!speakerId) {
+    setRenameSpeakerError('Speaker is unavailable.');
+    return;
+  }
+
+  if (!renameSpeakerInput) {
+    setRenameSpeakerError('Speaker input is unavailable.');
+    return;
+  }
+
+  const trimmedSpeakerName = String(renameSpeakerInput.value || '').trim();
+  if (!trimmedSpeakerName) {
+    setRenameSpeakerError('Speaker name cannot be empty.');
+    return;
+  }
+
+  if (trimmedSpeakerName === renameSpeakerState.currentDisplayName) {
+    closeRenameSpeakerModal({ force: true });
+    return;
+  }
+
+  setRenameSpeakerError('');
+  setRenameSpeakerFormDisabled(true);
 
   try {
     setStatusOverride('Saving speaker name...');
     applyRecordingState();
 
     const updatedTranscript = await window.recordingApi.renameSpeaker({
-      sessionId: recordingState.sessionId,
+      sessionId,
       speakerId,
       displayName: trimmedSpeakerName,
     });
@@ -755,6 +716,7 @@ async function renameSpeaker(eventTarget) {
     recordingState.transcriptDocument = updatedTranscript;
     renderTranscriptFromDocument(updatedTranscript);
 
+    closeRenameSpeakerModal({ force: true });
     clearStatusOverride();
     if (recordingState.mode === recordingModes.ERROR) {
       setMode(recordingModes.READY);
@@ -762,10 +724,10 @@ async function renameSpeaker(eventTarget) {
       applyRecordingState();
     }
   } catch (error) {
+    setRenameSpeakerFormDisabled(false);
+    setRenameSpeakerError(getErrorMessage(error, 'Unable to rename speaker.'));
     clearStatusOverride();
-    setMode(recordingModes.ERROR, {
-      errorMessage: getErrorMessage(error, 'Unable to rename speaker.'),
-    });
+    applyRecordingState();
   }
 }
 
@@ -783,7 +745,34 @@ function initializeRecordingControls() {
   });
 
   transcriptFeed.addEventListener('click', (event) => {
-    void renameSpeaker(event.target);
+    beginSpeakerRename(event.target);
+  });
+
+  if (renameSpeakerCancelButton) {
+    renameSpeakerCancelButton.addEventListener('click', () => {
+      closeRenameSpeakerModal();
+    });
+  }
+
+  if (renameSpeakerModalBackdrop) {
+    renameSpeakerModalBackdrop.addEventListener('click', (event) => {
+      if (event.target === renameSpeakerModalBackdrop) {
+        closeRenameSpeakerModal();
+      }
+    });
+  }
+
+  if (renameSpeakerForm) {
+    renameSpeakerForm.addEventListener('submit', (event) => {
+      void submitSpeakerRename(event);
+    });
+  }
+
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && renameSpeakerState.isOpen) {
+      event.preventDefault();
+      closeRenameSpeakerModal();
+    }
   });
 
   window.addEventListener('beforeunload', () => {

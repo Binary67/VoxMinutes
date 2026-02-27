@@ -10,6 +10,8 @@
     />
     <link rel="stylesheet" href="styles/foundation.css" />
     <link rel="stylesheet" href="styles/layout.css" />
+    <link rel="stylesheet" href="styles/modal.css" />
+    <link rel="stylesheet" href="styles/transcript-panel.css" />
     <link rel="stylesheet" href="styles/recording.css" />
   </head>
   <body>
@@ -30,17 +32,13 @@
             <i class="bi bi-grid-1x2-fill"></i>
             <span>Dashboard</span>
           </a>
-          <button type="button" class="nav-item">
-            <i class="bi bi-folder2-open"></i>
-            <span>Folders</span>
-          </button>
+          <a href="meetings.html" class="nav-item">
+            <i class="bi bi-camera-video"></i>
+            <span>Meetings</span>
+          </a>
           <button type="button" class="nav-item">
             <i class="bi bi-star"></i>
             <span>Favorites</span>
-          </button>
-          <button type="button" class="nav-item">
-            <i class="bi bi-trash3"></i>
-            <span>Trash</span>
           </button>
         </nav>
 
@@ -165,7 +163,44 @@
       </main>
     </div>
 
+    <div id="rename-speaker-modal-backdrop" class="modal-backdrop" hidden>
+      <section
+        id="rename-speaker-modal"
+        class="meeting-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rename-speaker-modal-title"
+        aria-describedby="rename-speaker-modal-description"
+      >
+        <header class="meeting-modal-header">
+          <h2 id="rename-speaker-modal-title">Rename Speaker</h2>
+          <p id="rename-speaker-modal-description">
+            Update how this speaker appears in the transcript.
+          </p>
+        </header>
+
+        <form id="rename-speaker-form" class="meeting-modal-form">
+          <label class="meeting-modal-field">
+            <span>Speaker name</span>
+            <input id="rename-speaker-input" name="speakerName" type="text" maxlength="120" required />
+          </label>
+
+          <p id="rename-speaker-error" class="modal-error" hidden></p>
+
+          <div class="meeting-modal-actions">
+            <button id="rename-speaker-cancel-btn" type="button" class="modal-btn secondary">
+              Cancel
+            </button>
+            <button id="rename-speaker-submit-btn" type="submit" class="modal-btn primary">
+              Save
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <script src="ui-shared.js"></script>
+    <script src="transcript-renderer.js"></script>
     <script src="recording.js"></script>
   </body>
 </html>
