@@ -131,12 +131,29 @@
   background: var(--brand-deep);
 }
 
+.generate-insights-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
 .insights-status {
   margin: 0;
   color: #4f6078;
   font-size: var(--fs-meta);
   line-height: 1.35;
   font-weight: var(--fw-medium);
+}
+
+.insights-status[data-state='loading'] {
+  color: #2463a6;
+}
+
+.insights-status[data-state='success'] {
+  color: #2f6f2f;
+}
+
+.insights-status[data-state='error'] {
+  color: #b42318;
 }
 
 .insight-block {
@@ -162,6 +179,22 @@
   font-size: var(--fs-body);
   line-height: 1.45;
   font-weight: var(--fw-medium);
+}
+
+.insight-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: #4e5767;
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  font-weight: var(--fw-medium);
+  display: grid;
+  gap: 6px;
+}
+
+.insight-list-empty {
+  list-style: none;
+  margin-left: -20px;
 }
 
 @media (max-width: 1080px) {

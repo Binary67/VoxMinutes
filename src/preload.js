@@ -29,6 +29,10 @@ contextBridge.exposeInMainWorld('recordingApi', {
     return ipcRenderer.invoke('recording:load-transcript', payload);
   },
 
+  generateMeetingInsights(payload) {
+    return ipcRenderer.invoke('recording:generate-meeting-insights', payload);
+  },
+
   listTranscriptSessions() {
     return ipcRenderer.invoke('recording:list-sessions');
   },

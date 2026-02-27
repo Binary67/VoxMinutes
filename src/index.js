@@ -4,6 +4,7 @@ const {
   appendTranscript,
   createTranscriptSession,
   deleteTranscriptSession,
+  generateMeetingInsights,
   listTranscriptSessions,
   loadTranscript,
   renameTranscriptSession,
@@ -56,6 +57,9 @@ function registerRecordingIpcHandlers() {
     deleteTranscriptSession(payload)
   );
   ipcMain.handle('recording:load-transcript', async (_event, payload) => loadTranscript(payload));
+  ipcMain.handle('recording:generate-meeting-insights', async (_event, payload) =>
+    generateMeetingInsights(payload)
+  );
   ipcMain.handle('recording:list-sessions', async () => listTranscriptSessions());
 }
 

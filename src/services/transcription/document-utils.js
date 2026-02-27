@@ -59,6 +59,16 @@ function normalizeEditableMeetingTitle(value) {
   return normalizedTitle;
 }
 
+function normalizeInsightItems(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item || '').replace(/\s+/gu, ' ').trim())
+    .filter(Boolean);
+}
+
 function createTranscriptDocument(sessionId, sourceModel, metadata = {}) {
   const nowIso = new Date().toISOString();
   return {
@@ -72,6 +82,8 @@ function createTranscriptDocument(sessionId, sourceModel, metadata = {}) {
     meetingSummary: '',
     meetingSummarySource: '',
     meetingSummaryUpdatedAt: '',
+    meetingKeyDecisions: [],
+    meetingActionItems: [],
     speakerMap: {},
     segments: [],
     fullText: '',
@@ -102,6 +114,8 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
     typeof value.meetingSummarySource === 'string' ? value.meetingSummarySource.trim() : '';
   const meetingSummaryUpdatedAt =
     typeof value.meetingSummaryUpdatedAt === 'string' ? value.meetingSummaryUpdatedAt : '';
+  const meetingKeyDecisions = normalizeInsightItems(value.meetingKeyDecisions);
+  const meetingActionItems = normalizeInsightItems(value.meetingActionItems);
 
   return {
     sessionId: typeof value.sessionId === 'string' ? value.sessionId : fallbackSessionId,
@@ -117,6 +131,8 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
     meetingSummary,
     meetingSummarySource,
     meetingSummaryUpdatedAt,
+    meetingKeyDecisions,
+    meetingActionItems,
     speakerMap: isPlainObject(value.speakerMap) ? value.speakerMap : {},
     segments: normalizedSegments,
     fullText,
@@ -185,6 +201,8 @@ function toPublicTranscriptDocument(document) {
     meetingSummary: document.meetingSummary,
     meetingSummarySource: document.meetingSummarySource,
     meetingSummaryUpdatedAt: document.meetingSummaryUpdatedAt,
+    meetingKeyDecisions: normalizeInsightItems(document.meetingKeyDecisions),
+    meetingActionItems: normalizeInsightItems(document.meetingActionItems),
     speakerMap: document.speakerMap,
     segments: document.segments,
     fullText: document.fullText,
