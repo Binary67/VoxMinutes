@@ -1,5 +1,4 @@
 const {
-  DASHBOARD_SUMMARY_MAX_LENGTH,
   DEFAULT_PARTICIPANT_COUNT,
   DEFAULT_SOURCE_MODEL,
   MAX_MEETING_TITLE_LENGTH,
@@ -71,29 +70,12 @@ function createTranscriptDocument(sessionId, sourceModel, metadata = {}) {
     participantCount: normalizeParticipantCount(metadata.participantCount),
     durationSec: null,
     meetingSummary: '',
+    meetingSummarySource: '',
+    meetingSummaryUpdatedAt: '',
     speakerMap: {},
     segments: [],
     fullText: '',
   };
-}
-
-function buildMeetingSummaryFromSegments(segments) {
-  const combinedText = segments
-    .map((segment) => (isPlainObject(segment) ? String(segment.text || '').trim() : ''))
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/gu, ' ')
-    .trim();
-
-  if (!combinedText) {
-    return '';
-  }
-
-  if (combinedText.length <= DASHBOARD_SUMMARY_MAX_LENGTH) {
-    return combinedText;
-  }
-
-  return `${combinedText.slice(0, DASHBOARD_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`;
 }
 
 function getTranscriptDurationSeconds(segments) {
@@ -115,8 +97,11 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
     typeof value.durationSec === 'number' && Number.isFinite(value.durationSec) && value.durationSec >= 0
       ? roundSeconds(value.durationSec)
       : getTranscriptDurationSeconds(normalizedSegments);
-  const persistedMeetingSummary = typeof value.meetingSummary === 'string' ? value.meetingSummary.trim() : '';
-  const meetingSummary = persistedMeetingSummary || buildMeetingSummaryFromSegments(normalizedSegments);
+  const meetingSummary = typeof value.meetingSummary === 'string' ? value.meetingSummary.trim() : '';
+  const meetingSummarySource =
+    typeof value.meetingSummarySource === 'string' ? value.meetingSummarySource.trim() : '';
+  const meetingSummaryUpdatedAt =
+    typeof value.meetingSummaryUpdatedAt === 'string' ? value.meetingSummaryUpdatedAt : '';
 
   return {
     sessionId: typeof value.sessionId === 'string' ? value.sessionId : fallbackSessionId,
@@ -130,6 +115,8 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
     participantCount: normalizeParticipantCount(value.participantCount),
     durationSec,
     meetingSummary,
+    meetingSummarySource,
+    meetingSummaryUpdatedAt,
     speakerMap: isPlainObject(value.speakerMap) ? value.speakerMap : {},
     segments: normalizedSegments,
     fullText,
@@ -184,7 +171,6 @@ function buildFullText(document) {
 function applyDerivedDocumentFields(document) {
   document.fullText = buildFullText(document);
   document.durationSec = getTranscriptDurationSeconds(document.segments);
-  document.meetingSummary = buildMeetingSummaryFromSegments(document.segments);
 }
 
 function toPublicTranscriptDocument(document) {
@@ -197,6 +183,8 @@ function toPublicTranscriptDocument(document) {
     participantCount: document.participantCount,
     durationSec: document.durationSec,
     meetingSummary: document.meetingSummary,
+    meetingSummarySource: document.meetingSummarySource,
+    meetingSummaryUpdatedAt: document.meetingSummaryUpdatedAt,
     speakerMap: document.speakerMap,
     segments: document.segments,
     fullText: document.fullText,
@@ -220,6 +208,8 @@ function toSessionSummary(document) {
     updatedAt: document.updatedAt,
     durationSec: document.durationSec,
     meetingSummary: document.meetingSummary,
+    meetingSummarySource: document.meetingSummarySource,
+    meetingSummaryUpdatedAt: document.meetingSummaryUpdatedAt,
     segmentCount,
   };
 }
