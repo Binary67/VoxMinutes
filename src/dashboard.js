@@ -115,17 +115,15 @@ function createMeetingCard(meeting) {
 }
 
 function renderMeetings(list) {
-  if (list.length === 0) {
-    meetingsGrid.innerHTML = '';
-    emptyState.hidden = false;
-    refreshScrollableState();
-    return;
-  }
-
-  const cardsMarkup = list.map((meeting) => createMeetingCard(meeting)).join('');
+  const isEmpty = list.length === 0;
+  const cardsMarkup = isEmpty ? '' : list.map((meeting) => createMeetingCard(meeting)).join('');
   meetingsGrid.innerHTML = cardsMarkup;
-  emptyState.hidden = true;
+  emptyState.hidden = !isEmpty;
   refreshScrollableState();
+}
+
+function getMeetingSearchTarget(meeting) {
+  return `${meeting.title} ${meeting.summary} ${meeting.category}`.toLowerCase();
 }
 
 function filterMeetings(query) {
@@ -134,11 +132,7 @@ function filterMeetings(query) {
   }
 
   const normalizedQuery = query.toLowerCase();
-  return meetings.filter((meeting) => {
-    const searchTarget =
-      `${meeting.title} ${meeting.summary} ${meeting.category}`.toLowerCase();
-    return searchTarget.includes(normalizedQuery);
-  });
+  return meetings.filter((meeting) => getMeetingSearchTarget(meeting).includes(normalizedQuery));
 }
 
 function initializeSearch() {

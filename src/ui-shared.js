@@ -13,6 +13,7 @@
     { label: 'Product', color: '#22c55e' },
   ];
 
+  const SCROLL_HIDE_DELAY_MS = 700;
   const scrollHideTimeouts = new WeakMap();
 
   function escapeHtml(value) {
@@ -61,7 +62,7 @@
     const timeoutId = setTimeout(() => {
       element.classList.remove('is-scrolling');
       scrollHideTimeouts.delete(element);
-    }, 700);
+    }, SCROLL_HIDE_DELAY_MS);
 
     scrollHideTimeouts.set(element, timeoutId);
   }
