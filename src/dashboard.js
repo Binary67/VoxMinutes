@@ -1,9 +1,3 @@
-const tags = [
-  { label: 'Important', color: '#f44336' },
-  { label: 'Brainstorming', color: '#f59e0b' },
-  { label: 'Product', color: '#22c55e' },
-];
-
 const meetings = [
   {
     title: 'Weekly Product Sync',
@@ -59,38 +53,13 @@ const meetings = [
   },
 ];
 
-const navItems = document.querySelectorAll('.nav-item');
+const { escapeHtml, renderDefaultTags, initializeSmartScrollbars, refreshScrollableState } =
+  window.uiShared;
+
 const tagList = document.getElementById('tag-list');
 const meetingsGrid = document.getElementById('meetings-grid');
 const emptyState = document.getElementById('empty-state');
 const searchInput = document.getElementById('search-input');
-
-const escapeMap = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (char) => escapeMap[char]);
-}
-
-function renderTags() {
-  const tagMarkup = tags
-    .map(
-      (tag) => `
-        <li class="tag-item">
-          <span class="tag-dot" style="--dot-color: ${escapeHtml(tag.color)}"></span>
-          <span>${escapeHtml(tag.label)}</span>
-        </li>
-      `
-    )
-    .join('');
-
-  tagList.innerHTML = tagMarkup;
-}
 
 function renderParticipants(participants, extraParticipants) {
   const avatarsMarkup = participants
@@ -149,12 +118,14 @@ function renderMeetings(list) {
   if (list.length === 0) {
     meetingsGrid.innerHTML = '';
     emptyState.hidden = false;
+    refreshScrollableState();
     return;
   }
 
   const cardsMarkup = list.map((meeting) => createMeetingCard(meeting)).join('');
   meetingsGrid.innerHTML = cardsMarkup;
   emptyState.hidden = true;
+  refreshScrollableState();
 }
 
 function filterMeetings(query) {
@@ -170,15 +141,6 @@ function filterMeetings(query) {
   });
 }
 
-function initializeNavigation() {
-  navItems.forEach((item) => {
-    item.addEventListener('click', () => {
-      navItems.forEach((navItem) => navItem.classList.remove('is-active'));
-      item.classList.add('is-active');
-    });
-  });
-}
-
 function initializeSearch() {
   searchInput.addEventListener('input', () => {
     const filteredMeetings = filterMeetings(searchInput.value.trim());
@@ -187,10 +149,11 @@ function initializeSearch() {
 }
 
 function initializeDashboard() {
-  renderTags();
+  renderDefaultTags(tagList);
   renderMeetings(meetings);
-  initializeNavigation();
   initializeSearch();
+  initializeSmartScrollbars();
+  searchInput.focus({ preventScroll: true });
 }
 
 initializeDashboard();

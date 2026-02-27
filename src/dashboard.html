@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | AI Notes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar scroll-fade" aria-label="Sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <i class="bi bi-soundwave"></i>
+          </div>
+          <div>
+            <p class="brand-title">AI Notes</p>
+            <p class="brand-subtitle">Pro Workspace</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Primary">
+          <a href="dashboard.html" class="nav-item is-active" aria-current="page">
+            <i class="bi bi-grid-1x2-fill"></i>
+            <span>Dashboard</span>
+          </a>
+          <a href="recording.html" class="nav-item">
+            <i class="bi bi-record-circle"></i>
+            <span>Recording</span>
+          </a>
+          <button type="button" class="nav-item">
+            <i class="bi bi-folder2-open"></i>
+            <span>Folders</span>
+          </button>
+          <button type="button" class="nav-item">
+            <i class="bi bi-star"></i>
+            <span>Favorites</span>
+          </button>
+          <button type="button" class="nav-item">
+            <i class="bi bi-trash3"></i>
+            <span>Trash</span>
+          </button>
+        </nav>
+
+        <section class="tags-section" aria-label="Tags">
+          <p class="section-label">Tags</p>
+          <ul id="tag-list" class="tag-list"></ul>
+        </section>
+
+        <div class="sidebar-spacer"></div>
+
+        <div class="sidebar-footer">
+          <button type="button" class="settings-link">
+            <i class="bi bi-gear"></i>
+            <span>Settings</span>
+          </button>
+
+          <section class="storage-card" aria-label="Storage usage">
+            <div class="storage-head">
+              <span>Storage</span>
+              <span>75%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width: 75%"></div>
+            </div>
+            <button type="button" class="upgrade-btn">Upgrade Plan</button>
+          </section>
+
+          <div class="profile-card" aria-label="Current user">
+            <div class="profile-avatar">AM</div>
+            <div class="profile-meta">
+              <strong>Alex Morgan</strong>
+              <span>alex@workspace.com</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-panel scroll-fade">
+        <section class="view-panel">
+          <header class="page-header">
+            <div>
+              <h1>Dashboard</h1>
+              <p>Welcome back, Alex. You have 3 summaries ready for review.</p>
+            </div>
+
+            <div class="header-actions">
+              <label class="search-box">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input
+                  id="search-input"
+                  type="search"
+                  placeholder="Search transcripts..."
+                  aria-label="Search transcripts"
+                />
+              </label>
+
+              <a href="recording.html" id="new-recording-btn" class="primary-btn">
+                <i class="bi bi-plus-lg"></i>
+                <span>New Recording</span>
+              </a>
+            </div>
+          </header>
+
+          <section class="stats-row" aria-label="Overview cards">
+            <article class="stat-card">
+              <div class="stat-card-head">
+                <div class="stat-icon stat-icon-energy">
+                  <i class="bi bi-lightning-charge-fill"></i>
+                </div>
+                <span class="stat-meta">+12% vs last week</span>
+              </div>
+              <p class="stat-value">14.5 hrs</p>
+              <p class="stat-label">Total recorded time</p>
+            </article>
+
+            <article class="stat-card">
+              <div class="stat-card-head">
+                <div class="stat-icon stat-icon-check">
+                  <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <span class="stat-meta">5 Pending</span>
+              </div>
+              <p class="stat-value">28</p>
+              <p class="stat-label">Action items extracted</p>
+            </article>
+
+            <article class="assistant-card">
+              <p class="assistant-chip">
+                <i class="bi bi-stars"></i>
+                <span>AI Assistant</span>
+              </p>
+              <p class="assistant-text">
+                "Create a summary of last week's product sync regarding the Q4
+                roadmap."
+              </p>
+              <p class="assistant-link">Click to ask AI about your notes</p>
+            </article>
+          </section>
+
+          <section class="meetings-section">
+            <div class="meetings-head">
+              <h2>Recent Meetings</h2>
+              <button type="button" class="view-all-btn">
+                <span>View all</span>
+                <i class="bi bi-arrow-right"></i>
+              </button>
+            </div>
+
+            <div id="meetings-grid" class="meetings-grid"></div>
+            <p id="empty-state" class="empty-state" hidden>
+              No meetings match your search.
+            </p>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="ui-shared.js"></script>
+    <script src="dashboard.js"></script>
+  </body>
+</html>
