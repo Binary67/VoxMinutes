@@ -20,6 +20,9 @@ const meetingVisuals = Object.freeze({
 });
 
 const MAX_MEETING_TITLE_LENGTH = 160;
+const MAX_RECENT_MEETINGS_ON_DASHBOARD = 3;
+const ESTIMATION_WINDOW_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const dashboardState = {
   meetings: [],
@@ -43,6 +46,10 @@ const meetingsGrid = document.getElementById('meetings-grid');
 const emptyState = document.getElementById('empty-state');
 const searchInput = document.getElementById('search-input');
 const totalRecordedTimeValue = document.getElementById('total-recorded-time-value');
+const estimatedTimeSavedValue = document.getElementById('estimated-time-saved-value');
+const estimatedTimeSavedMeta = document.getElementById('estimated-time-saved-meta');
+const estimatedProductivityLiftValue = document.getElementById('estimated-productivity-lift-value');
+const estimatedProductivityLiftMeta = document.getElementById('estimated-productivity-lift-meta');
 const viewAllMeetingsButton = document.querySelector('.view-all-btn');
 
 const newRecordingButton = document.getElementById('new-recording-btn');
@@ -93,6 +100,105 @@ function formatTotalRecordedTime(totalSeconds) {
 
   const totalMinutes = Math.max(1, Math.round(safeSeconds / 60));
   return `${totalMinutes} min`;
+}
+
+function toTimestampOrNull(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return null;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function getMeetingTimestamp(meeting) {
+  const updatedAtTimestamp = toTimestampOrNull(meeting && meeting.updatedAt);
+  if (updatedAtTimestamp !== null) {
+    return updatedAtTimestamp;
+  }
+
+  return toTimestampOrNull(meeting && meeting.createdAt);
+}
+
+function getRecentMeetings(meetings, nowTimestamp = Date.now()) {
+  const windowStartTimestamp = nowTimestamp - ESTIMATION_WINDOW_DAYS * MS_PER_DAY;
+  return meetings.filter((meeting) => {
+    const meetingTimestamp = getMeetingTimestamp(meeting);
+    if (meetingTimestamp === null) {
+      return false;
+    }
+
+    return meetingTimestamp >= windowStartTimestamp && meetingTimestamp <= nowTimestamp;
+  });
+}
+
+function getEstimatedMeetingEfficiency(durationSec) {
+  const safeDurationSec = toFiniteDurationSeconds(durationSec);
+  if (safeDurationSec <= 0) {
+    return {
+      savedMinutes: 6,
+      baselineMinutes: 12,
+    };
+  }
+
+  const durationMinutes = safeDurationSec / 60;
+  if (durationMinutes < 5) {
+    return {
+      savedMinutes: 4,
+      baselineMinutes: 8,
+    };
+  }
+
+  if (durationMinutes <= 20) {
+    return {
+      savedMinutes: 8,
+      baselineMinutes: 15,
+    };
+  }
+
+  return {
+    savedMinutes: 12,
+    baselineMinutes: 25,
+  };
+}
+
+function getEstimatedProductivityMetrics(meetings) {
+  const recentMeetings = getRecentMeetings(meetings);
+  const totals = recentMeetings.reduce(
+    (accumulator, meeting) => {
+      const efficiency = getEstimatedMeetingEfficiency(meeting && meeting.durationSec);
+      return {
+        totalSavedMinutes: accumulator.totalSavedMinutes + efficiency.savedMinutes,
+        totalBaselineMinutes: accumulator.totalBaselineMinutes + efficiency.baselineMinutes,
+      };
+    },
+    {
+      totalSavedMinutes: 0,
+      totalBaselineMinutes: 0,
+    }
+  );
+
+  const rawLiftPercent =
+    totals.totalBaselineMinutes > 0
+      ? Math.round((totals.totalSavedMinutes / totals.totalBaselineMinutes) * 100)
+      : 0;
+  const estimatedLiftPercent = Math.max(0, Math.min(99, rawLiftPercent));
+
+  return {
+    totalSavedMinutes: totals.totalSavedMinutes,
+    estimatedLiftPercent,
+    recentMeetingCount: recentMeetings.length,
+  };
+}
+
+function formatEstimatedTimeSaved(totalMinutes) {
+  const safeMinutes = Number.isFinite(totalMinutes) && totalMinutes > 0 ? Math.round(totalMinutes) : 0;
+  if (safeMinutes >= 60) {
+    const totalHours = safeMinutes / 60;
+    return `${totalHours.toFixed(1)} hrs`;
+  }
+
+  return `${safeMinutes} min`;
 }
 
 function getFallbackSummary() {
@@ -192,6 +298,10 @@ function getFilteredMeetings() {
   );
 }
 
+function getVisibleMeetings() {
+  return getFilteredMeetings().slice(0, MAX_RECENT_MEETINGS_ON_DASHBOARD);
+}
+
 function updateEmptyState(filteredMeetings) {
   if (filteredMeetings.length > 0) {
     emptyState.hidden = true;
@@ -210,30 +320,53 @@ function updateEmptyState(filteredMeetings) {
 }
 
 function renderStats() {
-  if (!totalRecordedTimeValue) {
-    return;
+  if (totalRecordedTimeValue) {
+    const totalRecordedSeconds = getTotalRecordedSeconds(dashboardState.meetings);
+    totalRecordedTimeValue.textContent = formatTotalRecordedTime(totalRecordedSeconds);
   }
 
-  const totalRecordedSeconds = getTotalRecordedSeconds(dashboardState.meetings);
-  totalRecordedTimeValue.textContent = formatTotalRecordedTime(totalRecordedSeconds);
+  const metrics = getEstimatedProductivityMetrics(dashboardState.meetings);
+
+  if (estimatedTimeSavedValue) {
+    estimatedTimeSavedValue.textContent = formatEstimatedTimeSaved(metrics.totalSavedMinutes);
+  }
+
+  if (estimatedProductivityLiftValue) {
+    estimatedProductivityLiftValue.textContent = `${metrics.estimatedLiftPercent}%`;
+  }
+
+  const meetingLabel = metrics.recentMeetingCount === 1 ? 'meeting' : 'meetings';
+  const estimateDescription =
+    metrics.recentMeetingCount > 0
+      ? `Estimated from ${metrics.recentMeetingCount} ${meetingLabel} in the last ${ESTIMATION_WINDOW_DAYS} days using duration bands.`
+      : `Estimated from meeting activity in the last ${ESTIMATION_WINDOW_DAYS} days.`;
+
+  if (estimatedTimeSavedMeta) {
+    estimatedTimeSavedMeta.title = estimateDescription;
+  }
+
+  if (estimatedProductivityLiftMeta) {
+    estimatedProductivityLiftMeta.title = estimateDescription;
+  }
 }
 
 function renderMeetings() {
+  const visibleMeetings = getVisibleMeetings();
+
   if (
     dashboardState.openMenuSessionId &&
-    !dashboardState.meetings.some((meeting) => meeting.sessionId === dashboardState.openMenuSessionId)
+    !visibleMeetings.some((meeting) => meeting.sessionId === dashboardState.openMenuSessionId)
   ) {
     dashboardState.openMenuSessionId = '';
   }
 
   renderStats();
 
-  const filteredMeetings = getFilteredMeetings();
   const cardsMarkup =
-    filteredMeetings.length === 0 ? '' : filteredMeetings.map((meeting) => createMeetingCard(meeting)).join('');
+    visibleMeetings.length === 0 ? '' : visibleMeetings.map((meeting) => createMeetingCard(meeting)).join('');
 
   meetingsGrid.innerHTML = cardsMarkup;
-  updateEmptyState(filteredMeetings);
+  updateEmptyState(visibleMeetings);
   refreshScrollableState();
 }
 
