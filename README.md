@@ -60,23 +60,23 @@ The codebase is built around one core workflow:
 
 ## UI Surface
 
-### Dashboard (`src/dashboard.html`, `src/dashboard/*.js`)
+### Dashboard (`src/features/dashboard/dashboard.html`, `src/features/dashboard/*.js`)
 - Recent meetings cards
 - Search and quick filtering
 - New recording modal (title + participant count + input source mode)
 - Rename/delete session actions
 - Estimated time saved and productivity lift metrics
 
-### Recording (`src/recording.html`, `src/recording.js`)
+### Recording (`src/features/recording/recording.html`, `src/features/recording/index.js`)
 - Recording state machine (`idle`, `recording`, `processing`, `ready`, `error`)
 - Timer, mute control, start/stop controls
 - Transcript feed with interactive speaker rename
 
-### Meetings (`src/meetings.html`, `src/meetings.js`)
+### Meetings (`src/features/meetings/meetings.html`, `src/features/meetings/index.js`)
 - Full saved meeting index
 - Searchable list with metadata and summaries
 
-### Meeting Details (`src/meeting-details.html`, `src/meeting-details.js`)
+### Meeting Details (`src/features/meeting-details/meeting-details.html`, `src/features/meeting-details/index.js`)
 - Transcript review view
 - On-demand AI insights generation
 - Status/error messaging for insight operations
@@ -84,21 +84,34 @@ The codebase is built around one core workflow:
 ## Architecture
 
 ### Main Process
-- `src/index.js`
+- `src/main/index.js`
   - Creates BrowserWindow
   - Configures media permission handlers
   - Registers IPC handlers for recording and transcript actions
 
 ### Secure Renderer Bridge
-- `src/preload.js`
+- `src/bridge/preload.js`
   - Exposes `window.recordingApi`
   - Defines typed IPC entry points used by renderer pages
 
 ### Service Layer
-- `src/services/transcription/service.js`
-  - Orchestrates session create/load/list/delete
-  - Handles transcription append, speaker rename, session rename
-  - Generates summary and detailed insights
+- `src/services/transcription/index.js`
+  - Canonical service entrypoint exported to Electron main process
+
+- `src/services/transcription/session-service.js`
+  - Session create/load/list/delete and session title rename
+
+- `src/services/transcription/transcription-service.js`
+  - Audio transcription and transcript append orchestration
+
+- `src/services/transcription/summary-service.js`
+  - Meeting summary generation and legacy summary refresh policy
+
+- `src/services/transcription/insights-service.js`
+  - Structured meeting insights generation
+
+- `src/services/transcription/speaker-service.js`
+  - Speaker rename persistence
 
 - `src/services/transcription/repository.js`
   - File-backed storage for transcript JSON documents
@@ -150,16 +163,61 @@ Required summary/insight variables:
 
 ```
 src/
-  index.js                  # Electron main process
-  preload.js                # secure API bridge to renderer
-  dashboard|meetings|recording|meeting-details.*  # UI screens
-  recording-ui.js           # recording state + visual updates
-  recording-media.js        # media capture + transcription calls
-  recording-speaker-rename.js
-  transcript-renderer.js
-  ui-shared.js
+  main/
+    index.js                # Electron main process
+  bridge/
+    preload.js              # secure API bridge to renderer
+  features/
+    dashboard/
+      dashboard.html
+      index.js
+      state.js
+      helpers.js
+      metrics.js
+      render.js
+      data.js
+      modals.js
+      events.js
+    recording/
+      recording.html
+      index.js
+      ui.js
+      media.js
+      speaker-rename.js
+    meetings/
+      meetings.html
+      index.js
+    meeting-details/
+      meeting-details.html
+      index.js
+  shared/
+    constants/input-modes.js
+    ui/
+      formatters.js
+      navigation.js
+      dom.js
+      scroll.js
+      index.js
+    transcript/renderer.js
+  styles/
+    base/
+      foundation.css
+      layout.css
+    components/
+      modal.css
+      transcript-panel.css
+    pages/
+      dashboard.css
+      recording.css
+      meetings.css
+      meeting-details.css
   services/transcription/
-    service.js
+    index.js
+    session-service.js
+    transcription-service.js
+    summary-service.js
+    insights-service.js
+    speaker-service.js
     repository.js
     payload-normalizer.js
     document-utils.js

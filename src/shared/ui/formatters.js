@@ -1,4 +1,4 @@
-(function initializeUiShared() {
+(function initializeUiFormatters() {
   const escapeMap = {
     '&': '&amp;',
     '<': '&lt;',
@@ -6,26 +6,11 @@
     '"': '&quot;',
     "'": '&#39;',
   };
-
   const defaultTags = [
     { label: 'Important', color: '#f44336' },
     { label: 'Brainstorming', color: '#f59e0b' },
     { label: 'Product', color: '#22c55e' },
   ];
-  const INPUT_SOURCE_MODES = Object.freeze({
-    MIC: 'mic',
-    SYSTEM: 'system',
-    BOTH: 'both',
-  });
-  const DEFAULT_INPUT_SOURCE_MODE = INPUT_SOURCE_MODES.MIC;
-  const inputSourceModeLabels = Object.freeze({
-    [INPUT_SOURCE_MODES.MIC]: 'Microphone',
-    [INPUT_SOURCE_MODES.SYSTEM]: 'System Audio',
-    [INPUT_SOURCE_MODES.BOTH]: 'Mic + System',
-  });
-
-  const SCROLL_HIDE_DELAY_MS = 700;
-  const scrollHideTimeouts = new WeakMap();
   const fallbackTranscriptSummaries = Object.freeze({
     dashboard: 'Transcript captured. Open to view details.',
     meetings: 'Transcript captured. Open meeting details to review the full transcript.',
@@ -37,23 +22,6 @@
       return 1;
     }
     return numericValue;
-  }
-
-  function normalizeInputSourceMode(value) {
-    const normalizedValue = String(value || '')
-      .trim()
-      .toLowerCase();
-
-    if (Object.values(INPUT_SOURCE_MODES).includes(normalizedValue)) {
-      return normalizedValue;
-    }
-
-    return DEFAULT_INPUT_SOURCE_MODE;
-  }
-
-  function getInputSourceModeLabel(value) {
-    const normalizedValue = normalizeInputSourceMode(value);
-    return inputSourceModeLabels[normalizedValue] || inputSourceModeLabels[DEFAULT_INPUT_SOURCE_MODE];
   }
 
   function formatParticipantLabel(participantCount) {
@@ -105,26 +73,6 @@
     return value;
   }
 
-  function buildMeetingsHref() {
-    return 'meetings.html';
-  }
-
-  function buildMeetingDetailsHref(sessionId) {
-    const normalizedSessionId = String(sessionId || '').trim();
-    if (!normalizedSessionId) {
-      return 'meeting-details.html';
-    }
-
-    const queryParams = new URLSearchParams();
-    queryParams.set('sessionId', normalizedSessionId);
-    return `meeting-details.html?${queryParams.toString()}`;
-  }
-
-  function hasRecordingApi(recordingApi) {
-    const api = typeof recordingApi === 'undefined' ? window.recordingApi : recordingApi;
-    return Boolean(api && typeof api.listTranscriptSessions === 'function');
-  }
-
   function getFallbackTranscriptSummary(context) {
     const normalizedContext = String(context || '').trim().toLowerCase();
     return fallbackTranscriptSummaries[normalizedContext] || fallbackTranscriptSummaries.dashboard;
@@ -169,73 +117,16 @@
     tagListElement.innerHTML = tagMarkup;
   }
 
-  function updateScrollableState(element) {
-    const hasOverflow =
-      element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth;
-    element.classList.toggle('has-overflow', hasOverflow);
-  }
-
-  function refreshScrollableState() {
-    document.querySelectorAll('.scroll-fade').forEach((element) => {
-      updateScrollableState(element);
-    });
-  }
-
-  function setScrollingClass(element) {
-    element.classList.add('is-scrolling');
-
-    const previousTimeout = scrollHideTimeouts.get(element);
-    if (previousTimeout) {
-      clearTimeout(previousTimeout);
-    }
-
-    const timeoutId = setTimeout(() => {
-      element.classList.remove('is-scrolling');
-      scrollHideTimeouts.delete(element);
-    }, SCROLL_HIDE_DELAY_MS);
-
-    scrollHideTimeouts.set(element, timeoutId);
-  }
-
-  function initializeSmartScrollbars() {
-    const scrollableElements = document.querySelectorAll('.scroll-fade');
-
-    scrollableElements.forEach((element) => {
-      updateScrollableState(element);
-
-      element.addEventListener(
-        'scroll',
-        () => {
-          setScrollingClass(element);
-        },
-        { passive: true }
-      );
-    });
-
-    window.addEventListener('resize', () => {
-      refreshScrollableState();
-    });
-  }
-
-  window.uiShared = {
-    escapeHtml,
-    renderDefaultTags,
-    initializeSmartScrollbars,
-    refreshScrollableState,
-    hasRecordingApi,
-    getFallbackTranscriptSummary,
-    buildMeetingSearchTarget,
+  window.uiFormatters = {
     normalizeParticipantCount,
-    normalizeInputSourceMode,
-    getInputSourceModeLabel,
-    INPUT_SOURCE_MODES,
-    DEFAULT_INPUT_SOURCE_MODE,
     formatParticipantLabel,
     formatMeetingDate,
     formatMeetingDuration,
     toFiniteDurationSeconds,
-    buildMeetingsHref,
-    buildMeetingDetailsHref,
+    getFallbackTranscriptSummary,
+    buildMeetingSearchTarget,
     parseSessionIdFromQuery,
+    escapeHtml,
+    renderDefaultTags,
   };
 })();

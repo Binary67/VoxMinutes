@@ -8,11 +8,11 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
     />
-    <link rel="stylesheet" href="styles/foundation.css" />
-    <link rel="stylesheet" href="styles/layout.css" />
-    <link rel="stylesheet" href="styles/dashboard.css" />
-    <link rel="stylesheet" href="styles/transcript-panel.css" />
-    <link rel="stylesheet" href="styles/meeting-details.css" />
+    <link rel="stylesheet" href="../../styles/base/foundation.css" />
+    <link rel="stylesheet" href="../../styles/base/layout.css" />
+    <link rel="stylesheet" href="../../styles/pages/dashboard.css" />
+    <link rel="stylesheet" href="../../styles/components/transcript-panel.css" />
+    <link rel="stylesheet" href="../../styles/pages/meeting-details.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -28,11 +28,11 @@
         </div>
 
         <nav class="sidebar-nav" aria-label="Primary">
-          <a href="dashboard.html" class="nav-item">
+          <a href="../dashboard/dashboard.html" class="nav-item">
             <i class="bi bi-grid-1x2-fill"></i>
             <span>Dashboard</span>
           </a>
-          <a href="meetings.html" class="nav-item is-active" aria-current="page">
+          <a href="../meetings/meetings.html" class="nav-item is-active" aria-current="page">
             <i class="bi bi-camera-video"></i>
             <span>Meetings</span>
           </a>
@@ -61,7 +61,7 @@
         <div class="panel-frame">
           <section class="view-panel meeting-details-view">
             <header class="details-header">
-              <a href="meetings.html" class="details-back-link">
+              <a href="../meetings/meetings.html" class="details-back-link">
                 <i class="bi bi-arrow-left"></i>
                 <span>Back to Meetings</span>
               </a>
@@ -124,8 +124,13 @@
       </main>
     </div>
 
-    <script src="ui-shared.js"></script>
-    <script src="transcript-renderer.js"></script>
-    <script src="meeting-details.js"></script>
+    <script src="../../shared/constants/input-modes.js"></script>
+    <script src="../../shared/ui/formatters.js"></script>
+    <script src="../../shared/ui/navigation.js"></script>
+    <script src="../../shared/ui/dom.js"></script>
+    <script src="../../shared/ui/scroll.js"></script>
+    <script src="../../shared/ui/index.js"></script>
+    <script src="../../shared/transcript/renderer.js"></script>
+    <script src="index.js"></script>
   </body>
 </html>

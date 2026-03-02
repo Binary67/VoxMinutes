@@ -10,7 +10,7 @@ const {
   renameTranscriptSession,
   renameSpeaker,
   transcribeSegment,
-} = require('./services/transcription-service');
+} = require('../services/transcription');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -27,12 +27,12 @@ const createWindow = () => {
     autoHideMenuBar: true,
     backgroundColor: '#f3f4f7',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, '..', 'bridge', 'preload.js'),
     },
   });
 
   // and load the dashboard page of the app.
-  mainWindow.loadFile(path.join(__dirname, 'dashboard.html'));
+  mainWindow.loadFile(path.join(__dirname, '..', 'features', 'dashboard', 'dashboard.html'));
 };
 
 let areRecordingHandlersRegistered = false;

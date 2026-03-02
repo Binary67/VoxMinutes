@@ -1,5 +1,6 @@
 (function initializeDashboardHelpers() {
   const {
+    buildRecordingHref,
     buildMeetingDetailsHref,
     hasRecordingApi,
     normalizeInputSourceMode,
@@ -61,7 +62,8 @@
     queryParams.set('inputSourceMode', normalizeInputSourceMode(inputSourceMode || DEFAULT_INPUT_SOURCE_MODE));
 
     const queryString = queryParams.toString();
-    window.location.href = queryString ? `recording.html?${queryString}` : 'recording.html';
+    const recordingHref = buildRecordingHref();
+    window.location.href = queryString ? `${recordingHref}?${queryString}` : recordingHref;
   }
 
   window.dashboardHelpers = {
