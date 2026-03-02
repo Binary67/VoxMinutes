@@ -24,9 +24,9 @@ const transcriptFeed = document.getElementById('meeting-transcript-feed');
 const meetingDetailsEmptyState = document.getElementById('meeting-details-empty-state');
 const generateInsightsButton = document.getElementById('generate-insights-btn');
 const insightsPlaceholderStatus = document.getElementById('insights-placeholder-status');
-const insightSummaryText = document.getElementById('insight-summary-text');
-const insightDecisionsList = document.getElementById('insight-decisions-list');
+const insightMeetingPointsList = document.getElementById('insight-meeting-points-list');
 const insightActionsList = document.getElementById('insight-actions-list');
+const insightTimelineList = document.getElementById('insight-timeline-list');
 const detailsBackLink = document.querySelector('.details-back-link');
 
 function hasLoadTranscriptApi() {
@@ -104,6 +104,14 @@ function setInsightsStatus(message, statusType = 'neutral') {
   insightsPlaceholderStatus.setAttribute('data-state', statusType);
 }
 
+function normalizeInsightItemText(value) {
+  return String(value || '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .replace(/^[\-\u2022*]+\s*/u, '')
+    .replace(/^["'`]+|["'`]+$/gu, '');
+}
+
 function normalizeInsightItems(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -113,10 +121,7 @@ function normalizeInsightItems(value) {
   const seenItems = new Set();
 
   for (const rawItem of value) {
-    const normalizedItem = String(rawItem || '')
-      .replace(/\s+/gu, ' ')
-      .trim()
-      .replace(/^[\-\u2022*]+\s*/u, '');
+    const normalizedItem = normalizeInsightItemText(rawItem);
 
     if (!normalizedItem) {
       continue;
@@ -134,15 +139,101 @@ function normalizeInsightItems(value) {
   return normalizedItems;
 }
 
-function renderInsightList(listElement, items, emptyMessage) {
+function normalizeActionItems(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalizedItems = [];
+  const seenItems = new Set();
+
+  for (const rawItem of value) {
+    if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
+      continue;
+    }
+
+    const task = normalizeInsightItemText(rawItem.task);
+    const evidenceQuote = normalizeInsightItemText(rawItem.evidenceQuote);
+    if (!task || !evidenceQuote) {
+      continue;
+    }
+
+    const dedupeKey = `${task.toLowerCase()}|${evidenceQuote.toLowerCase()}`;
+    if (seenItems.has(dedupeKey)) {
+      continue;
+    }
+
+    seenItems.add(dedupeKey);
+    normalizedItems.push({ task, evidenceQuote });
+  }
+
+  return normalizedItems;
+}
+
+function normalizeIsoDate(value) {
+  const normalizedValue = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(normalizedValue)) {
+    return '';
+  }
+
+  const parsedDate = new Date(`${normalizedValue}T00:00:00.000Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  if (parsedDate.toISOString().slice(0, 10) !== normalizedValue) {
+    return '';
+  }
+
+  return normalizedValue;
+}
+
+function normalizeTimelineItems(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalizedItems = [];
+  const seenItems = new Set();
+
+  for (const rawItem of value) {
+    if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
+      continue;
+    }
+
+    const date = normalizeIsoDate(rawItem.date);
+    const task = normalizeInsightItemText(rawItem.task);
+    const evidenceQuote = normalizeInsightItemText(rawItem.evidenceQuote);
+    if (!date || !task || !evidenceQuote) {
+      continue;
+    }
+
+    const dedupeKey = `${date}|${task.toLowerCase()}|${evidenceQuote.toLowerCase()}`;
+    if (seenItems.has(dedupeKey)) {
+      continue;
+    }
+
+    seenItems.add(dedupeKey);
+    normalizedItems.push({ date, task, evidenceQuote });
+  }
+
+  normalizedItems.sort((left, right) => left.date.localeCompare(right.date));
+  return normalizedItems;
+}
+
+function createEmptyInsightListItem(emptyMessage) {
+  const emptyItem = document.createElement('li');
+  emptyItem.className = 'insight-list-empty';
+  emptyItem.textContent = emptyMessage;
+  return emptyItem;
+}
+
+function renderTextInsightList(listElement, items, emptyMessage) {
   listElement.replaceChildren();
 
   const normalizedItems = normalizeInsightItems(items);
   if (normalizedItems.length === 0) {
-    const emptyItem = document.createElement('li');
-    emptyItem.className = 'insight-list-empty';
-    emptyItem.textContent = emptyMessage;
-    listElement.appendChild(emptyItem);
+    listElement.appendChild(createEmptyInsightListItem(emptyMessage));
     return;
   }
 
@@ -153,20 +244,71 @@ function renderInsightList(listElement, items, emptyMessage) {
   }
 }
 
-function renderInsights(meetingDocument) {
-  const summaryText = String(meetingDocument && meetingDocument.meetingSummary ? meetingDocument.meetingSummary : '').trim();
-  insightSummaryText.textContent = summaryText || 'Not generated yet.';
+function createEvidenceText(value) {
+  return `"${String(value || '').trim()}"`;
+}
 
-  renderInsightList(
-    insightDecisionsList,
-    meetingDocument && meetingDocument.meetingKeyDecisions,
-    'No key decisions identified.'
+function createRichInsightListItem(primaryText, evidenceQuote) {
+  const listItem = document.createElement('li');
+  listItem.className = 'insight-list-item-rich';
+
+  const mainText = document.createElement('p');
+  mainText.className = 'insight-item-main';
+  mainText.textContent = primaryText;
+
+  const evidenceText = document.createElement('p');
+  evidenceText.className = 'insight-item-evidence';
+  evidenceText.textContent = createEvidenceText(evidenceQuote);
+
+  listItem.append(mainText, evidenceText);
+  return listItem;
+}
+
+function renderActionItemsList(listElement, items, emptyMessage) {
+  listElement.replaceChildren();
+
+  const normalizedItems = normalizeActionItems(items);
+  if (normalizedItems.length === 0) {
+    listElement.appendChild(createEmptyInsightListItem(emptyMessage));
+    return;
+  }
+
+  for (const item of normalizedItems) {
+    listElement.appendChild(createRichInsightListItem(item.task, item.evidenceQuote));
+  }
+}
+
+function renderTimelineList(listElement, items, emptyMessage) {
+  listElement.replaceChildren();
+
+  const normalizedItems = normalizeTimelineItems(items);
+  if (normalizedItems.length === 0) {
+    listElement.appendChild(createEmptyInsightListItem(emptyMessage));
+    return;
+  }
+
+  for (const item of normalizedItems) {
+    listElement.appendChild(createRichInsightListItem(`${item.date} - ${item.task}`, item.evidenceQuote));
+  }
+}
+
+function renderInsights(meetingDocument) {
+  renderTextInsightList(
+    insightMeetingPointsList,
+    meetingDocument && meetingDocument.meetingSalientPoints,
+    'No meeting points identified from transcript.'
   );
 
-  renderInsightList(
+  renderActionItemsList(
     insightActionsList,
     meetingDocument && meetingDocument.meetingActionItems,
-    'No action items identified.'
+    'No action items identified from transcript.'
+  );
+
+  renderTimelineList(
+    insightTimelineList,
+    meetingDocument && meetingDocument.meetingImportantTimeline,
+    'No timeline commitments identified from transcript.'
   );
 
   refreshScrollableState();
@@ -226,20 +368,22 @@ async function handleGenerateInsights() {
         ? meetingDetailsState.meetingDocument
         : {};
 
-    currentDocument.meetingSummary = String(generatedInsights.meetingSummary || '').trim();
-    currentDocument.meetingKeyDecisions = Array.isArray(generatedInsights.meetingKeyDecisions)
-      ? generatedInsights.meetingKeyDecisions
+    currentDocument.meetingSalientPoints = Array.isArray(generatedInsights.meetingSalientPoints)
+      ? generatedInsights.meetingSalientPoints
       : [];
     currentDocument.meetingActionItems = Array.isArray(generatedInsights.meetingActionItems)
       ? generatedInsights.meetingActionItems
       : [];
-    currentDocument.meetingSummarySource = String(generatedInsights.meetingSummarySource || '').trim();
-    currentDocument.meetingSummaryUpdatedAt = String(generatedInsights.meetingSummaryUpdatedAt || '').trim();
+    currentDocument.meetingImportantTimeline = Array.isArray(generatedInsights.meetingImportantTimeline)
+      ? generatedInsights.meetingImportantTimeline
+      : [];
+    currentDocument.meetingInsightsSource = String(generatedInsights.meetingInsightsSource || '').trim();
+    currentDocument.meetingInsightsUpdatedAt = String(generatedInsights.meetingInsightsUpdatedAt || '').trim();
 
     meetingDetailsState.meetingDocument = currentDocument;
     renderInsights(currentDocument);
 
-    const updatedLabel = formatInsightUpdatedAt(currentDocument.meetingSummaryUpdatedAt);
+    const updatedLabel = formatInsightUpdatedAt(currentDocument.meetingInsightsUpdatedAt);
     setInsightsStatus(
       updatedLabel ? `AI insights generated on ${updatedLabel}.` : 'AI insights generated.',
       'success'

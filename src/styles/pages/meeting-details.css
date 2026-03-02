@@ -197,6 +197,22 @@
   margin-left: -20px;
 }
 
+.insight-list-item-rich {
+  display: grid;
+  gap: 4px;
+}
+
+.insight-item-main {
+  margin: 0;
+}
+
+.insight-item-evidence {
+  margin: 0;
+  color: #5f6d82;
+  font-size: var(--fs-meta);
+  line-height: 1.35;
+}
+
 @media (max-width: 1080px) {
   .meeting-content-layout {
     grid-template-columns: 1fr;

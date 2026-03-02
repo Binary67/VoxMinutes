@@ -69,6 +69,69 @@ function normalizeInsightItems(value) {
     .filter(Boolean);
 }
 
+function isValidIsoDate(value) {
+  const normalizedValue = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(normalizedValue)) {
+    return false;
+  }
+
+  const parsedDate = new Date(`${normalizedValue}T00:00:00.000Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
+  }
+
+  return parsedDate.toISOString().slice(0, 10) === normalizedValue;
+}
+
+function normalizeActionInsightItems(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalizedItems = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      continue;
+    }
+
+    const task = String(item.task || '').replace(/\s+/gu, ' ').trim();
+    const evidenceQuote = String(item.evidenceQuote || '').replace(/\s+/gu, ' ').trim();
+    if (!task || !evidenceQuote) {
+      continue;
+    }
+
+    normalizedItems.push({ task, evidenceQuote });
+  }
+
+  return normalizedItems;
+}
+
+function normalizeTimelineInsightItems(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalizedItems = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      continue;
+    }
+
+    const date = String(item.date || '').trim();
+    const task = String(item.task || '').replace(/\s+/gu, ' ').trim();
+    const evidenceQuote = String(item.evidenceQuote || '').replace(/\s+/gu, ' ').trim();
+    if (!isValidIsoDate(date) || !task || !evidenceQuote) {
+      continue;
+    }
+
+    normalizedItems.push({ date, task, evidenceQuote });
+  }
+
+  return normalizedItems;
+}
+
 function createTranscriptDocument(sessionId, sourceModel, metadata = {}) {
   const nowIso = new Date().toISOString();
   return {
@@ -82,8 +145,11 @@ function createTranscriptDocument(sessionId, sourceModel, metadata = {}) {
     meetingSummary: '',
     meetingSummarySource: '',
     meetingSummaryUpdatedAt: '',
-    meetingKeyDecisions: [],
+    meetingSalientPoints: [],
     meetingActionItems: [],
+    meetingImportantTimeline: [],
+    meetingInsightsSource: '',
+    meetingInsightsUpdatedAt: '',
     speakerMap: {},
     segments: [],
     fullText: '',
@@ -114,8 +180,13 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
     typeof value.meetingSummarySource === 'string' ? value.meetingSummarySource.trim() : '';
   const meetingSummaryUpdatedAt =
     typeof value.meetingSummaryUpdatedAt === 'string' ? value.meetingSummaryUpdatedAt : '';
-  const meetingKeyDecisions = normalizeInsightItems(value.meetingKeyDecisions);
-  const meetingActionItems = normalizeInsightItems(value.meetingActionItems);
+  const meetingSalientPoints = normalizeInsightItems(value.meetingSalientPoints);
+  const meetingActionItems = normalizeActionInsightItems(value.meetingActionItems);
+  const meetingImportantTimeline = normalizeTimelineInsightItems(value.meetingImportantTimeline);
+  const meetingInsightsSource =
+    typeof value.meetingInsightsSource === 'string' ? value.meetingInsightsSource.trim() : '';
+  const meetingInsightsUpdatedAt =
+    typeof value.meetingInsightsUpdatedAt === 'string' ? value.meetingInsightsUpdatedAt : '';
 
   return {
     sessionId: typeof value.sessionId === 'string' ? value.sessionId : fallbackSessionId,
@@ -131,8 +202,11 @@ function coerceTranscriptDocument(value, fallbackSessionId) {
     meetingSummary,
     meetingSummarySource,
     meetingSummaryUpdatedAt,
-    meetingKeyDecisions,
+    meetingSalientPoints,
     meetingActionItems,
+    meetingImportantTimeline,
+    meetingInsightsSource,
+    meetingInsightsUpdatedAt,
     speakerMap: isPlainObject(value.speakerMap) ? value.speakerMap : {},
     segments: normalizedSegments,
     fullText,
@@ -201,8 +275,12 @@ function toPublicTranscriptDocument(document) {
     meetingSummary: document.meetingSummary,
     meetingSummarySource: document.meetingSummarySource,
     meetingSummaryUpdatedAt: document.meetingSummaryUpdatedAt,
-    meetingKeyDecisions: normalizeInsightItems(document.meetingKeyDecisions),
-    meetingActionItems: normalizeInsightItems(document.meetingActionItems),
+    meetingSalientPoints: normalizeInsightItems(document.meetingSalientPoints),
+    meetingActionItems: normalizeActionInsightItems(document.meetingActionItems),
+    meetingImportantTimeline: normalizeTimelineInsightItems(document.meetingImportantTimeline),
+    meetingInsightsSource: String(document.meetingInsightsSource || '').trim(),
+    meetingInsightsUpdatedAt:
+      typeof document.meetingInsightsUpdatedAt === 'string' ? document.meetingInsightsUpdatedAt : '',
     speakerMap: document.speakerMap,
     segments: document.segments,
     fullText: document.fullText,

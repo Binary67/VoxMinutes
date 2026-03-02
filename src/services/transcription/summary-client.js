@@ -76,13 +76,20 @@ function createInsightsPrompt(meetingTitle, transcriptText, wordLimit, maxItems)
   const normalizedMaxItems = Number.isFinite(maxItems) ? Math.max(0, Math.floor(maxItems)) : 6;
   return [
     'Return a strict JSON object with this exact schema and no additional keys:',
-    '{"summary": string, "keyDecisions": string[], "actionItems": string[]}',
+    '{"salientPoints": string[], "actionItems": [{"task": string, "evidenceQuote": string}], "importantTimeline": [{"date": "YYYY-MM-DD", "task": string, "evidenceQuote": string}]}',
     '',
     'Rules:',
-    `- Summary: one concise sentence of at most ${normalizedWordLimit} words.`,
-    `- keyDecisions: 0 to ${normalizedMaxItems} concise bullets, no speaker names.`,
-    `- actionItems: 0 to ${normalizedMaxItems} concrete tasks, no speaker names.`,
-    '- If none, return an empty array for the section.',
+    `- salientPoints (meeting points): 0 to ${normalizedMaxItems} concise bullets, each at most ${normalizedWordLimit} words.`,
+    '- Use salientPoints to capture key ideas, insights, decisions, motivations, or notable context discussed.',
+    '- When transcript has meaningful discussion, include at least 1 salient point.',
+    '- Do not leave salientPoints empty unless transcript is too short/noisy to extract clear meeting points.',
+    `- actionItems: 0 to ${normalizedMaxItems} entries with concrete tasks explicitly stated in transcript.`,
+    `- importantTimeline: 0 to ${normalizedMaxItems} entries with explicit date and explicit task from transcript.`,
+    '- Action item and timeline evidenceQuote values must be short verbatim quotes from transcript text.',
+    '- Do not infer or assume tasks, deadlines, owners, or dates.',
+    '- Include timeline entries only when transcript clearly states a full calendar date.',
+    '- Timeline date must be YYYY-MM-DD.',
+    '- If none, return an empty array.',
     '- Output JSON only. Do not include markdown fences or commentary.',
     '',
     `Meeting title: ${normalizedTitle}`,
@@ -116,7 +123,7 @@ function extractLikelyJsonObject(value) {
   return normalized.slice(objectStart, objectEnd + 1).trim();
 }
 
-function normalizeInsightsList(value) {
+function normalizeInsightsTextList(value) {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -124,6 +131,53 @@ function normalizeInsightsList(value) {
   return value
     .map((item) => String(item || '').replace(/\s+/gu, ' ').trim().replace(/^[\-\u2022*]+\s*/u, ''))
     .filter(Boolean);
+}
+
+function normalizeInsightObjectList(value, keys) {
+  if (!Array.isArray(value) || !Array.isArray(keys) || keys.length === 0) {
+    return [];
+  }
+
+  const normalizedItems = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      continue;
+    }
+
+    const normalizedItem = {};
+    let isValid = true;
+
+    for (const key of keys) {
+      const normalizedValue = String(item[key] || '').replace(/\s+/gu, ' ').trim();
+      if (!normalizedValue) {
+        isValid = false;
+        break;
+      }
+
+      normalizedItem[key] = normalizedValue;
+    }
+
+    if (isValid) {
+      normalizedItems.push(normalizedItem);
+    }
+  }
+
+  return normalizedItems;
+}
+
+function isValidIsoDate(value) {
+  const normalizedValue = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(normalizedValue)) {
+    return false;
+  }
+
+  const parsedDate = new Date(`${normalizedValue}T00:00:00.000Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
+  }
+
+  return parsedDate.toISOString().slice(0, 10) === normalizedValue;
 }
 
 function parseInsightsResponse(contentValue) {
@@ -148,15 +202,16 @@ function parseInsightsResponse(contentValue) {
     throw new Error('Insights response format invalid.');
   }
 
-  const summary = String(parsedBody.summary || '').trim();
-  if (!summary) {
-    throw new Error('Insights response did not include summary text.');
-  }
+  const parsedTimeline = normalizeInsightObjectList(parsedBody.importantTimeline, [
+    'date',
+    'task',
+    'evidenceQuote',
+  ]).filter((item) => isValidIsoDate(item.date));
 
   return {
-    summary,
-    keyDecisions: normalizeInsightsList(parsedBody.keyDecisions),
-    actionItems: normalizeInsightsList(parsedBody.actionItems),
+    salientPoints: normalizeInsightsTextList(parsedBody.salientPoints),
+    actionItems: normalizeInsightObjectList(parsedBody.actionItems, ['task', 'evidenceQuote']),
+    importantTimeline: parsedTimeline,
   };
 }
 
@@ -260,7 +315,7 @@ async function requestMeetingInsightsFromAzure({
         {
           role: 'system',
           content:
-            'You generate structured meeting insights from transcripts. Obey the user schema and formatting constraints exactly.',
+            'You generate structured meeting insights from transcripts, including practical meeting points that capture key ideas. Obey the user schema and formatting constraints exactly.',
         },
         {
           role: 'user',
