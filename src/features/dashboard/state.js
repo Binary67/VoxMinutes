@@ -23,6 +23,12 @@
     lastFocusedElement: null,
   };
 
+  const recordingInputSourceState = {
+    isOpen: false,
+    activeIndex: 0,
+    selectedValue: '',
+  };
+
   const renameMeetingState = {
     sessionId: '',
     isSaving: false,
@@ -50,6 +56,13 @@
   const newRecordingForm = document.getElementById('new-recording-form');
   const meetingTitleInput = document.getElementById('meeting-title-input');
   const meetingParticipantsInput = document.getElementById('meeting-participants-input');
+  const meetingInputSourceDropdown = document.getElementById('meeting-input-source-dropdown');
+  const meetingInputSourceTrigger = document.getElementById('meeting-input-source-trigger');
+  const meetingInputSourceTriggerLabel = document.getElementById('meeting-input-source-trigger-label');
+  const meetingInputSourceListbox = document.getElementById('meeting-input-source-listbox');
+  const meetingInputSourceOptions = Array.from(
+    document.querySelectorAll('#meeting-input-source-listbox .meeting-input-source-option')
+  );
   const meetingInputSourceModeInput = document.getElementById('meeting-input-source-mode-input');
   const modalCancelButton = document.getElementById('meeting-modal-cancel-btn');
   const renameMeetingModalBackdrop = document.getElementById('rename-meeting-modal-backdrop');
@@ -75,6 +88,7 @@
     MS_PER_DAY,
     dashboardState,
     modalState,
+    recordingInputSourceState,
     renameMeetingState,
     deleteMeetingState,
     tagList,
@@ -93,6 +107,11 @@
     newRecordingForm,
     meetingTitleInput,
     meetingParticipantsInput,
+    meetingInputSourceDropdown,
+    meetingInputSourceTrigger,
+    meetingInputSourceTriggerLabel,
+    meetingInputSourceListbox,
+    meetingInputSourceOptions,
     meetingInputSourceModeInput,
     modalCancelButton,
     renameMeetingModalBackdrop,

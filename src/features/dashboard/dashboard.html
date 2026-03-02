@@ -190,14 +190,68 @@
             />
           </label>
 
-          <label class="meeting-modal-field">
-            <span>Audio source</span>
-            <select id="meeting-input-source-mode-input" name="inputSourceMode">
-              <option value="mic" selected>Microphone</option>
-              <option value="system">System Audio</option>
-              <option value="both">Mic + System</option>
-            </select>
-          </label>
+          <div class="meeting-modal-field">
+            <span id="meeting-input-source-label">Audio source</span>
+            <div id="meeting-input-source-dropdown" class="meeting-input-source">
+              <input
+                id="meeting-input-source-mode-input"
+                name="inputSourceMode"
+                type="hidden"
+                value="mic"
+              />
+              <button
+                id="meeting-input-source-trigger"
+                class="meeting-input-source-trigger"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="meeting-input-source-listbox"
+                aria-labelledby="meeting-input-source-label meeting-input-source-trigger-label"
+              >
+                <span id="meeting-input-source-trigger-label">Microphone</span>
+              </button>
+              <div
+                id="meeting-input-source-listbox"
+                class="meeting-input-source-listbox"
+                role="listbox"
+                aria-labelledby="meeting-input-source-label"
+                aria-hidden="true"
+                tabindex="-1"
+                hidden
+              >
+                <div
+                  id="meeting-input-source-option-mic"
+                  class="meeting-input-source-option is-selected is-active"
+                  role="option"
+                  aria-selected="true"
+                  data-value="mic"
+                >
+                  <span class="meeting-input-source-option-label">Microphone</span>
+                  <i class="bi bi-check-lg meeting-input-source-option-check" aria-hidden="true"></i>
+                </div>
+                <div
+                  id="meeting-input-source-option-system"
+                  class="meeting-input-source-option"
+                  role="option"
+                  aria-selected="false"
+                  data-value="system"
+                >
+                  <span class="meeting-input-source-option-label">System Audio</span>
+                  <i class="bi bi-check-lg meeting-input-source-option-check" aria-hidden="true"></i>
+                </div>
+                <div
+                  id="meeting-input-source-option-both"
+                  class="meeting-input-source-option"
+                  role="option"
+                  aria-selected="false"
+                  data-value="both"
+                >
+                  <span class="meeting-input-source-option-label">Mic + System</span>
+                  <i class="bi bi-check-lg meeting-input-source-option-check" aria-hidden="true"></i>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div class="meeting-modal-actions">
             <button id="meeting-modal-cancel-btn" type="button" class="modal-btn secondary">

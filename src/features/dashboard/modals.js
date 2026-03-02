@@ -1,14 +1,23 @@
 (function initializeDashboardModals() {
-  const { normalizeParticipantCount, normalizeInputSourceMode, DEFAULT_INPUT_SOURCE_MODE } =
-    window.uiShared;
+  const {
+    normalizeParticipantCount,
+    normalizeInputSourceMode,
+    getInputSourceModeLabel,
+    DEFAULT_INPUT_SOURCE_MODE,
+  } = window.uiShared;
   const {
     modalState,
+    recordingInputSourceState,
     renameMeetingState,
     deleteMeetingState,
     modalBackdrop,
     modalElement,
     meetingTitleInput,
     meetingParticipantsInput,
+    meetingInputSourceTrigger,
+    meetingInputSourceTriggerLabel,
+    meetingInputSourceListbox,
+    meetingInputSourceOptions,
     meetingInputSourceModeInput,
     renameMeetingModalBackdrop,
     renameMeetingModal,
@@ -58,6 +67,201 @@
 
   function getActiveModalContext() {
     return getModalContext(modalState.activeModal);
+  }
+
+  function getInputSourceOptions() {
+    return Array.isArray(meetingInputSourceOptions) ? meetingInputSourceOptions : [];
+  }
+
+  function getInputSourceOptionValue(optionElement) {
+    return normalizeInputSourceMode(optionElement ? optionElement.dataset.value : '');
+  }
+
+  function getInputSourceOptionCount() {
+    return getInputSourceOptions().length;
+  }
+
+  function getInputSourceOptionIndexByValue(value) {
+    const normalizedValue = normalizeInputSourceMode(value);
+    const optionIndex = getInputSourceOptions().findIndex(
+      (optionElement) => getInputSourceOptionValue(optionElement) === normalizedValue
+    );
+    return optionIndex >= 0 ? optionIndex : 0;
+  }
+
+  function getActiveInputSourceOptionIndex() {
+    return Number.isFinite(recordingInputSourceState.activeIndex)
+      ? recordingInputSourceState.activeIndex
+      : 0;
+  }
+
+  function isInputSourceListboxOpen() {
+    return Boolean(recordingInputSourceState.isOpen);
+  }
+
+  function setActiveInputSourceOptionByIndex(index) {
+    const optionCount = getInputSourceOptionCount();
+    if (optionCount === 0) {
+      recordingInputSourceState.activeIndex = 0;
+      if (meetingInputSourceListbox) {
+        meetingInputSourceListbox.removeAttribute('aria-activedescendant');
+      }
+      return -1;
+    }
+
+    const boundedIndex = Math.max(0, Math.min(optionCount - 1, Number(index) || 0));
+    recordingInputSourceState.activeIndex = boundedIndex;
+
+    const inputSourceOptions = getInputSourceOptions();
+    inputSourceOptions.forEach((optionElement, optionIndex) => {
+      optionElement.classList.toggle('is-active', optionIndex === boundedIndex);
+    });
+
+    if (meetingInputSourceListbox) {
+      const activeOption = inputSourceOptions[boundedIndex];
+      if (activeOption && activeOption.id) {
+        meetingInputSourceListbox.setAttribute('aria-activedescendant', activeOption.id);
+      } else {
+        meetingInputSourceListbox.removeAttribute('aria-activedescendant');
+      }
+    }
+
+    return boundedIndex;
+  }
+
+  function moveActiveInputSourceOption(offset) {
+    const optionCount = getInputSourceOptionCount();
+    if (optionCount === 0) {
+      return -1;
+    }
+
+    const currentIndex = getActiveInputSourceOptionIndex();
+    const nextIndex = (currentIndex + Number(offset) + optionCount) % optionCount;
+    return setActiveInputSourceOptionByIndex(nextIndex);
+  }
+
+  function setInputSourceValue(value) {
+    const normalizedValue = normalizeInputSourceMode(value);
+    recordingInputSourceState.selectedValue = normalizedValue;
+
+    if (meetingInputSourceModeInput) {
+      meetingInputSourceModeInput.value = normalizedValue;
+    }
+
+    if (meetingInputSourceTriggerLabel) {
+      meetingInputSourceTriggerLabel.textContent = getInputSourceModeLabel(normalizedValue);
+    }
+
+    const inputSourceOptions = getInputSourceOptions();
+    inputSourceOptions.forEach((optionElement) => {
+      const isSelected = getInputSourceOptionValue(optionElement) === normalizedValue;
+      optionElement.classList.toggle('is-selected', isSelected);
+      optionElement.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    });
+
+    setActiveInputSourceOptionByIndex(getInputSourceOptionIndexByValue(normalizedValue));
+    return normalizedValue;
+  }
+
+  function selectActiveInputSourceOption() {
+    const inputSourceOptions = getInputSourceOptions();
+    const activeOption = inputSourceOptions[getActiveInputSourceOptionIndex()];
+    if (!activeOption) {
+      return;
+    }
+
+    setInputSourceValue(getInputSourceOptionValue(activeOption));
+  }
+
+  function findInputSourceOptionIndexByPrefix(prefix, startIndex) {
+    const normalizedPrefix = String(prefix || '')
+      .trim()
+      .toLowerCase();
+    if (!normalizedPrefix) {
+      return -1;
+    }
+
+    const inputSourceOptions = getInputSourceOptions();
+    const optionCount = inputSourceOptions.length;
+    if (optionCount === 0) {
+      return -1;
+    }
+
+    const normalizedStartIndex = Math.max(0, Math.min(optionCount - 1, Number(startIndex) || 0));
+    for (let offset = 0; offset < optionCount; offset += 1) {
+      const optionIndex = (normalizedStartIndex + offset) % optionCount;
+      const optionLabel = String(inputSourceOptions[optionIndex].textContent || '')
+        .trim()
+        .toLowerCase();
+      if (optionLabel.startsWith(normalizedPrefix)) {
+        return optionIndex;
+      }
+    }
+
+    return -1;
+  }
+
+  function openInputSourceListbox(config = {}) {
+    const { focusListbox = true } = config;
+    if (!meetingInputSourceTrigger || !meetingInputSourceListbox || getInputSourceOptionCount() === 0) {
+      return;
+    }
+
+    if (!recordingInputSourceState.selectedValue) {
+      setInputSourceValue(
+        meetingInputSourceModeInput ? meetingInputSourceModeInput.value : DEFAULT_INPUT_SOURCE_MODE
+      );
+    }
+
+    recordingInputSourceState.isOpen = true;
+    meetingInputSourceListbox.hidden = false;
+    meetingInputSourceListbox.setAttribute('aria-hidden', 'false');
+    meetingInputSourceTrigger.setAttribute('aria-expanded', 'true');
+    window.requestAnimationFrame(() => {
+      if (recordingInputSourceState.isOpen && meetingInputSourceListbox) {
+        meetingInputSourceListbox.classList.add('is-open');
+      }
+    });
+
+    setActiveInputSourceOptionByIndex(
+      getInputSourceOptionIndexByValue(recordingInputSourceState.selectedValue)
+    );
+
+    if (focusListbox) {
+      meetingInputSourceListbox.focus({ preventScroll: true });
+    }
+  }
+
+  function closeInputSourceListbox(config = {}) {
+    const { restoreFocus = true } = config;
+    if (!meetingInputSourceTrigger || !meetingInputSourceListbox) {
+      return;
+    }
+
+    const wasOpen = recordingInputSourceState.isOpen || !meetingInputSourceListbox.hidden;
+    if (!wasOpen) {
+      return;
+    }
+
+    recordingInputSourceState.isOpen = false;
+    meetingInputSourceTrigger.setAttribute('aria-expanded', 'false');
+    meetingInputSourceListbox.classList.remove('is-open');
+    meetingInputSourceListbox.setAttribute('aria-hidden', 'true');
+    meetingInputSourceListbox.hidden = true;
+    meetingInputSourceListbox.removeAttribute('aria-activedescendant');
+
+    if (restoreFocus && modalState.activeModal === 'new-recording') {
+      meetingInputSourceTrigger.focus({ preventScroll: true });
+    }
+  }
+
+  function toggleInputSourceListbox() {
+    if (isInputSourceListboxOpen()) {
+      closeInputSourceListbox();
+      return;
+    }
+
+    openInputSourceListbox();
   }
 
   function openModal(modalId) {
@@ -138,6 +342,10 @@
       resetDeleteMeetingModalState();
     }
 
+    if (closedModalId === 'new-recording') {
+      closeInputSourceListbox({ restoreFocus: false });
+    }
+
     document.body.classList.remove('has-open-modal');
 
     if (modalState.lastFocusedElement instanceof HTMLElement) {
@@ -158,7 +366,11 @@
         'button, input, select, textarea, a[href], [tabindex]:not([tabindex="-1"])'
       )
     ).filter(
-      (element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true'
+      (element) =>
+        !element.hasAttribute('disabled') &&
+        element.getAttribute('aria-hidden') !== 'true' &&
+        !element.hidden &&
+        !(element instanceof HTMLInputElement && element.type === 'hidden')
     );
   }
 
@@ -173,9 +385,8 @@
   function openRecordingModal() {
     meetingTitleInput.value = '';
     meetingParticipantsInput.value = '1';
-    if (meetingInputSourceModeInput) {
-      meetingInputSourceModeInput.value = DEFAULT_INPUT_SOURCE_MODE;
-    }
+    setInputSourceValue(DEFAULT_INPUT_SOURCE_MODE);
+    closeInputSourceListbox({ restoreFocus: false });
 
     if (!openModal('new-recording')) {
       return;
@@ -346,7 +557,17 @@
       return;
     }
 
+    if (event.defaultPrevented) {
+      return;
+    }
+
     if (event.key === 'Escape') {
+      if (modalState.activeModal === 'new-recording' && isInputSourceListboxOpen()) {
+        event.preventDefault();
+        closeInputSourceListbox();
+        return;
+      }
+
       event.preventDefault();
       closeActiveModal();
       return;
@@ -377,10 +598,26 @@
     }
   }
 
+  setInputSourceValue(
+    meetingInputSourceModeInput ? meetingInputSourceModeInput.value : DEFAULT_INPUT_SOURCE_MODE
+  );
+  closeInputSourceListbox({ restoreFocus: false });
+
   window.dashboardModals = {
     closeActiveModal,
     closeRecordingModal,
     openRecordingModal,
+    isInputSourceListboxOpen,
+    openInputSourceListbox,
+    closeInputSourceListbox,
+    toggleInputSourceListbox,
+    setInputSourceValue,
+    setActiveInputSourceOptionByIndex,
+    moveActiveInputSourceOption,
+    selectActiveInputSourceOption,
+    findInputSourceOptionIndexByPrefix,
+    getInputSourceOptionCount,
+    getActiveInputSourceOptionIndex,
     openRenameMeetingModal,
     closeRenameMeetingModal,
     openDeleteMeetingModal,
