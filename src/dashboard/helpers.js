@@ -1,5 +1,10 @@
 (function initializeDashboardHelpers() {
-  const { buildMeetingDetailsHref, hasRecordingApi } = window.uiShared;
+  const {
+    buildMeetingDetailsHref,
+    hasRecordingApi,
+    normalizeInputSourceMode,
+    DEFAULT_INPUT_SOURCE_MODE,
+  } = window.uiShared;
   const { MAX_MEETING_TITLE_LENGTH } = window.dashboardStateStore;
 
   function hasMeetingActionsApi() {
@@ -47,12 +52,13 @@
     window.location.href = buildMeetingDetailsHref(normalizedSessionId);
   }
 
-  function navigateToRecordingPage(meetingTitle, participantCount) {
+  function navigateToRecordingPage(meetingTitle, participantCount, inputSourceMode) {
     const queryParams = new URLSearchParams();
     if (meetingTitle) {
       queryParams.set('title', meetingTitle);
     }
     queryParams.set('participants', String(participantCount));
+    queryParams.set('inputSourceMode', normalizeInputSourceMode(inputSourceMode || DEFAULT_INPUT_SOURCE_MODE));
 
     const queryString = queryParams.toString();
     window.location.href = queryString ? `recording.html?${queryString}` : 'recording.html';

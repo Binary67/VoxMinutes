@@ -66,7 +66,7 @@
           >
             <header class="recording-header">
               <h1 id="recording-title">New Recording</h1>
-              <p id="recording-subtitle">Prepare your mic and press Start when ready.</p>
+              <p id="recording-subtitle">Prepare your audio source and press Start when ready.</p>
             </header>
 
             <section class="recording-status-row" aria-live="polite">
@@ -81,6 +81,7 @@
                   <span></span>
                 </span>
               </p>
+              <p id="recording-source-chip" class="recording-source-chip">Source: Microphone</p>
               <button
                 id="mic-toggle-btn"
                 type="button"
@@ -91,6 +92,8 @@
                 <i class="bi bi-mic-fill"></i>
               </button>
             </section>
+
+            <p id="recording-source-notice" class="recording-source-notice" hidden></p>
 
             <section class="timer-section" aria-label="Recording timer">
               <p class="timer-readout">

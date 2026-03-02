@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, desktopCapturer, ipcMain, session } = require('electron');
 const path = require('node:path');
 const {
   appendTranscript,
@@ -64,7 +64,7 @@ function registerRecordingIpcHandlers() {
 }
 
 function configureMediaPermissions() {
-  const supportedPermissions = new Set(['media', 'microphone', 'audioCapture']);
+  const supportedPermissions = new Set(['media', 'microphone', 'audioCapture', 'display-capture']);
 
   session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
     return supportedPermissions.has(permission);
@@ -75,12 +75,38 @@ function configureMediaPermissions() {
   });
 }
 
+function configureDisplayMediaCapture() {
+  session.defaultSession.setDisplayMediaRequestHandler(
+    async (_request, callback) => {
+      try {
+        const sources = await desktopCapturer.getSources({ types: ['screen'] });
+        if (!sources || sources.length === 0) {
+          callback({});
+          return;
+        }
+
+        callback({
+          video: sources[0],
+          audio: 'loopback',
+        });
+      } catch (error) {
+        console.error('Display media capture setup failed.', error);
+        callback({});
+      }
+    },
+    {
+      useSystemPicker: true,
+    }
+  );
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   registerRecordingIpcHandlers();
   configureMediaPermissions();
+  configureDisplayMediaCapture();
   createWindow();
 
   // On OS X it's common to re-create a window in the app when the

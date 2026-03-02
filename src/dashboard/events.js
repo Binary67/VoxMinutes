@@ -13,6 +13,9 @@
     renameMeetingModalBackdrop,
     renameMeetingForm,
     renameMeetingCancelButton,
+    deleteMeetingModalBackdrop,
+    deleteMeetingForm,
+    deleteMeetingCancelButton,
   } = window.dashboardStateStore;
   const { navigateToMeetingDetails } = window.dashboardHelpers;
   const { renderMeetings, closeMeetingOptionsMenu, toggleMeetingOptionsMenu } = window.dashboardRender;
@@ -21,8 +24,10 @@
     openRecordingModal,
     closeRecordingModal,
     closeRenameMeetingModal,
+    closeDeleteMeetingModal,
     submitNewRecordingForm,
     submitRenameMeetingForm,
+    submitDeleteMeetingForm,
     handleModalKeyboard,
   } = window.dashboardModals;
 
@@ -170,6 +175,16 @@
       }
     });
 
+    deleteMeetingCancelButton.addEventListener('click', () => {
+      closeDeleteMeetingModal();
+    });
+
+    deleteMeetingModalBackdrop.addEventListener('click', (event) => {
+      if (event.target === deleteMeetingModalBackdrop) {
+        closeDeleteMeetingModal();
+      }
+    });
+
     document.addEventListener('keydown', (event) => {
       handleModalKeyboard(event);
     });
@@ -180,6 +195,10 @@
 
     renameMeetingForm.addEventListener('submit', (event) => {
       void submitRenameMeetingForm(event);
+    });
+
+    deleteMeetingForm.addEventListener('submit', (event) => {
+      void submitDeleteMeetingForm(event);
     });
   }
 

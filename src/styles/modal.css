@@ -62,7 +62,8 @@ body.has-open-modal {
   font-weight: var(--fw-semibold);
 }
 
-.meeting-modal-field input {
+.meeting-modal-field input,
+.meeting-modal-field select {
   border: 1px solid var(--border-soft);
   border-radius: 12px;
   background: var(--surface-solid);
@@ -115,6 +116,16 @@ body.has-open-modal {
 
 .modal-btn.primary:hover {
   background: var(--brand-deep);
+}
+
+.modal-btn.danger {
+  background: #d92d20;
+  color: var(--text-on-accent);
+  box-shadow: 0 8px 20px rgba(217, 45, 32, 0.22);
+}
+
+.modal-btn.danger:hover {
+  background: #b42318;
 }
 
 @media (max-width: 760px) {

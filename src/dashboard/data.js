@@ -1,6 +1,6 @@
 (function initializeDashboardData() {
   const { dashboardState } = window.dashboardStateStore;
-  const { hasRecordingApi, hasMeetingActionsApi, getErrorMessage } = window.dashboardHelpers;
+  const { hasRecordingApi, hasMeetingActionsApi } = window.dashboardHelpers;
   const { renderMeetings } = window.dashboardRender;
 
   async function loadMeetings() {
@@ -44,7 +44,7 @@
     window.dashboardModals.openRenameMeetingModal(sessionId);
   }
 
-  async function deleteMeeting(sessionId) {
+  function deleteMeeting(sessionId) {
     if (!hasMeetingActionsApi()) {
       return;
     }
@@ -54,20 +54,7 @@
       return;
     }
 
-    const meetingTitle = String(meeting.meetingTitle || 'Untitled meeting').trim() || 'Untitled meeting';
-    const isDeleteConfirmed = window.confirm(
-      `Delete "${meetingTitle}"?\n\nThis permanently deletes the transcript.`
-    );
-    if (!isDeleteConfirmed) {
-      return;
-    }
-
-    try {
-      await window.recordingApi.deleteTranscriptSession({ sessionId });
-      await loadMeetings();
-    } catch (error) {
-      window.alert(getErrorMessage(error, 'Unable to delete meeting.'));
-    }
+    window.dashboardModals.openDeleteMeetingModal(sessionId);
   }
 
   window.dashboardData = {

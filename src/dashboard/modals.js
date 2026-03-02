@@ -1,18 +1,27 @@
 (function initializeDashboardModals() {
-  const { normalizeParticipantCount } = window.uiShared;
+  const { normalizeParticipantCount, normalizeInputSourceMode, DEFAULT_INPUT_SOURCE_MODE } =
+    window.uiShared;
   const {
     modalState,
     renameMeetingState,
+    deleteMeetingState,
     modalBackdrop,
     modalElement,
     meetingTitleInput,
     meetingParticipantsInput,
+    meetingInputSourceModeInput,
     renameMeetingModalBackdrop,
     renameMeetingModal,
     renameMeetingTitleInput,
     renameMeetingError,
     renameMeetingCancelButton,
     renameMeetingSubmitButton,
+    deleteMeetingModalBackdrop,
+    deleteMeetingModal,
+    deleteMeetingTitle,
+    deleteMeetingError,
+    deleteMeetingCancelButton,
+    deleteMeetingSubmitButton,
   } = window.dashboardStateStore;
   const {
     hasMeetingActionsApi,
@@ -34,6 +43,13 @@
       return {
         backdrop: renameMeetingModalBackdrop,
         modalElement: renameMeetingModal,
+      };
+    }
+
+    if (modalId === 'delete-meeting') {
+      return {
+        backdrop: deleteMeetingModalBackdrop,
+        modalElement: deleteMeetingModal,
       };
     }
 
@@ -80,6 +96,27 @@
     setRenameMeetingError('');
   }
 
+  function setDeleteMeetingError(message) {
+    const errorMessage = String(message || '').trim();
+    deleteMeetingError.textContent = errorMessage;
+    deleteMeetingError.hidden = !errorMessage;
+  }
+
+  function setDeleteMeetingFormDisabled(isDisabled) {
+    deleteMeetingState.isDeleting = isDisabled;
+    deleteMeetingCancelButton.disabled = isDisabled;
+    deleteMeetingSubmitButton.disabled = isDisabled;
+  }
+
+  function resetDeleteMeetingModalState() {
+    deleteMeetingState.sessionId = '';
+    deleteMeetingState.isDeleting = false;
+    deleteMeetingTitle.textContent = 'Untitled meeting';
+    deleteMeetingCancelButton.disabled = false;
+    deleteMeetingSubmitButton.disabled = false;
+    setDeleteMeetingError('');
+  }
+
   function closeActiveModal() {
     if (!modalState.activeModal) {
       return;
@@ -95,6 +132,10 @@
 
     if (closedModalId === 'rename-meeting') {
       resetRenameMeetingModalState();
+    }
+
+    if (closedModalId === 'delete-meeting') {
+      resetDeleteMeetingModalState();
     }
 
     document.body.classList.remove('has-open-modal');
@@ -132,6 +173,9 @@
   function openRecordingModal() {
     meetingTitleInput.value = '';
     meetingParticipantsInput.value = '1';
+    if (meetingInputSourceModeInput) {
+      meetingInputSourceModeInput.value = DEFAULT_INPUT_SOURCE_MODE;
+    }
 
     if (!openModal('new-recording')) {
       return;
@@ -167,6 +211,33 @@
     closeActiveModal();
   }
 
+  function openDeleteMeetingModal(sessionId) {
+    const meeting = getMeetingBySessionId(sessionId);
+    if (!meeting) {
+      return;
+    }
+
+    deleteMeetingState.sessionId = sessionId;
+    deleteMeetingTitle.textContent =
+      String(meeting.meetingTitle || '').trim() || 'Untitled meeting';
+    setDeleteMeetingError('');
+    setDeleteMeetingFormDisabled(false);
+
+    if (!openModal('delete-meeting')) {
+      return;
+    }
+
+    deleteMeetingCancelButton.focus({ preventScroll: true });
+  }
+
+  function closeDeleteMeetingModal() {
+    if (modalState.activeModal !== 'delete-meeting') {
+      return;
+    }
+
+    closeActiveModal();
+  }
+
   function submitNewRecordingForm(event) {
     event.preventDefault();
 
@@ -174,9 +245,12 @@
       .trim()
       .replace(/\s+/gu, ' ');
     const participantCount = normalizeParticipantCount(meetingParticipantsInput.value);
+    const inputSourceMode = normalizeInputSourceMode(
+      meetingInputSourceModeInput ? meetingInputSourceModeInput.value : DEFAULT_INPUT_SOURCE_MODE
+    );
 
     closeRecordingModal();
-    navigateToRecordingPage(meetingTitle, participantCount);
+    navigateToRecordingPage(meetingTitle, participantCount, inputSourceMode);
   }
 
   async function submitRenameMeetingForm(event) {
@@ -232,6 +306,41 @@
     }
   }
 
+  async function submitDeleteMeetingForm(event) {
+    event.preventDefault();
+
+    if (!hasMeetingActionsApi()) {
+      setDeleteMeetingError('Meeting actions are unavailable.');
+      return;
+    }
+
+    if (deleteMeetingState.isDeleting) {
+      return;
+    }
+
+    const sessionId = String(deleteMeetingState.sessionId || '').trim();
+    if (!sessionId) {
+      setDeleteMeetingError('Meeting session is unavailable.');
+      return;
+    }
+
+    setDeleteMeetingError('');
+    setDeleteMeetingFormDisabled(true);
+
+    try {
+      await window.recordingApi.deleteTranscriptSession({ sessionId });
+      closeDeleteMeetingModal();
+      await loadMeetings();
+    } catch (error) {
+      if (modalState.activeModal !== 'delete-meeting') {
+        return;
+      }
+
+      setDeleteMeetingFormDisabled(false);
+      setDeleteMeetingError(getErrorMessage(error, 'Unable to delete meeting.'));
+    }
+  }
+
   function handleModalKeyboard(event) {
     if (!modalState.activeModal) {
       return;
@@ -274,8 +383,11 @@
     openRecordingModal,
     openRenameMeetingModal,
     closeRenameMeetingModal,
+    openDeleteMeetingModal,
+    closeDeleteMeetingModal,
     submitNewRecordingForm,
     submitRenameMeetingForm,
+    submitDeleteMeetingForm,
     handleModalKeyboard,
   };
 })();

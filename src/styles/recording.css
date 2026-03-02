@@ -42,6 +42,33 @@
   background: var(--surface-elevated);
 }
 
+.recording-source-chip {
+  margin: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 7px 12px;
+  color: #4f6078;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--surface-elevated);
+}
+
+.recording-source-notice {
+  margin: -12px auto 0;
+  max-width: 760px;
+  text-align: center;
+  color: #7a4c00;
+  background: #fff8e8;
+  border: 1px solid #f3db9d;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-semibold);
+  line-height: 1.4;
+}
+
 .live-dot {
   width: 10px;
   height: 10px;
@@ -322,6 +349,11 @@
 
   .recording-status-row {
     gap: 10px;
+  }
+
+  .recording-source-chip {
+    font-size: 0.67rem;
+    letter-spacing: 0.03em;
   }
 
   .recording-controls {

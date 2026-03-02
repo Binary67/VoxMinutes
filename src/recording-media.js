@@ -1,5 +1,23 @@
 (function initializeRecordingMediaModule() {
+  const {
+    normalizeInputSourceMode,
+    getInputSourceModeLabel,
+    INPUT_SOURCE_MODES,
+    DEFAULT_INPUT_SOURCE_MODE,
+  } = window.uiShared;
   const DEFAULT_AUDIO_MIME_TYPE = 'audio/webm';
+  const modeFallbackOrder = Object.freeze({
+    [INPUT_SOURCE_MODES.MIC]: [INPUT_SOURCE_MODES.MIC, INPUT_SOURCE_MODES.SYSTEM, INPUT_SOURCE_MODES.BOTH],
+    [INPUT_SOURCE_MODES.SYSTEM]: [INPUT_SOURCE_MODES.SYSTEM, INPUT_SOURCE_MODES.MIC, INPUT_SOURCE_MODES.BOTH],
+    [INPUT_SOURCE_MODES.BOTH]: [INPUT_SOURCE_MODES.BOTH, INPUT_SOURCE_MODES.MIC, INPUT_SOURCE_MODES.SYSTEM],
+  });
+  const captureErrorMessages = Object.freeze({
+    NotFoundError: 'No compatible audio source was found.',
+    NotAllowedError: 'Audio capture permission was denied.',
+    NotReadableError: 'Audio device is busy or unavailable.',
+    AbortError: 'Audio capture was interrupted.',
+    SecurityError: 'Audio capture is blocked by browser security settings.',
+  });
 
   function getErrorMessage(error, fallbackMessage) {
     if (error instanceof Error && error.message) {
@@ -84,6 +102,49 @@
     });
   }
 
+  function stopStreamTracks(stream) {
+    if (!stream || typeof stream.getTracks !== 'function') {
+      return;
+    }
+
+    stream.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch (_error) {
+        // No-op: track may already be stopped.
+      }
+    });
+  }
+
+  function ensureAudioTracks(stream, sourceLabel) {
+    if (!stream || typeof stream.getAudioTracks !== 'function') {
+      throw new Error(`${sourceLabel} stream is unavailable.`);
+    }
+
+    const audioTracks = stream.getAudioTracks().filter((track) => track.readyState !== 'ended');
+    if (audioTracks.length === 0) {
+      throw new Error(`No audio track was available from ${sourceLabel}.`);
+    }
+
+    return audioTracks;
+  }
+
+  function getCaptureErrorMessage(error, fallbackMessage) {
+    if (error && typeof error === 'object' && 'name' in error) {
+      const errorName = String(error.name || '');
+      if (captureErrorMessages[errorName]) {
+        return captureErrorMessages[errorName];
+      }
+    }
+
+    return getErrorMessage(error, fallbackMessage);
+  }
+
+  function buildAcquisitionPlan(selectedInputMode) {
+    const normalizedMode = normalizeInputSourceMode(selectedInputMode || DEFAULT_INPUT_SOURCE_MODE);
+    return modeFallbackOrder[normalizedMode] || modeFallbackOrder[DEFAULT_INPUT_SOURCE_MODE];
+  }
+
   function createRecordingMedia(deps) {
     const safeDeps = deps && typeof deps === 'object' ? deps : {};
     const state = safeDeps.state;
@@ -92,27 +153,48 @@
     const closeRenameSpeakerModal = safeDeps.closeRenameSpeakerModal;
     const defaultAudioMimeType = safeDeps.defaultAudioMimeType || DEFAULT_AUDIO_MIME_TYPE;
 
+    let activeCaptureCleanup = null;
+    let activeMicTracks = [];
+
     function hasRecordingApi() {
       return Boolean(window.recordingApi);
     }
 
-    function applyMutePreferenceToStream() {
-      if (!state.mediaStream) {
-        return;
-      }
+    function clearActiveCaptureDetails() {
+      activeMicTracks = [];
+      activeCaptureCleanup = null;
+      state.activeInputMode = '';
+    }
 
-      state.mediaStream.getAudioTracks().forEach((track) => {
+    function setActiveCaptureDetails(captureResult) {
+      activeMicTracks = Array.isArray(captureResult.micTracks) ? captureResult.micTracks : [];
+      activeCaptureCleanup =
+        typeof captureResult.cleanup === 'function'
+          ? captureResult.cleanup
+          : null;
+      state.activeInputMode = normalizeInputSourceMode(captureResult.activeMode);
+    }
+
+    function applyMutePreferenceToStream() {
+      activeMicTracks.forEach((track) => {
         track.enabled = !state.isMicMuted;
       });
     }
 
     function releaseMediaResources() {
       if (state.mediaStream) {
-        state.mediaStream.getTracks().forEach((track) => {
-          track.stop();
-        });
+        stopStreamTracks(state.mediaStream);
       }
 
+      if (typeof activeCaptureCleanup === 'function') {
+        try {
+          activeCaptureCleanup();
+        } catch (_error) {
+          // No-op: release should never break user flow.
+        }
+      }
+
+      clearActiveCaptureDetails();
       state.mediaStream = null;
       state.mediaRecorder = null;
       state.audioChunks = [];
@@ -135,6 +217,182 @@
       ui.renderTranscriptFromDocument(sessionData.document);
     }
 
+    async function acquireMicStream() {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        throw new Error('Microphone capture is not supported in this environment.');
+      }
+
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const micTracks = ensureAudioTracks(micStream, 'microphone');
+
+      return {
+        activeMode: INPUT_SOURCE_MODES.MIC,
+        stream: micStream,
+        micTracks,
+        cleanup: () => {
+          stopStreamTracks(micStream);
+        },
+      };
+    }
+
+    async function acquireSystemStream() {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+        throw new Error('System audio capture is not supported in this environment.');
+      }
+
+      const systemDisplayStream = await navigator.mediaDevices.getDisplayMedia({
+        audio: true,
+        video: true,
+      });
+
+      try {
+        const systemAudioTracks = ensureAudioTracks(systemDisplayStream, 'system audio');
+        const systemAudioOnlyStream = new MediaStream(systemAudioTracks);
+
+        return {
+          activeMode: INPUT_SOURCE_MODES.SYSTEM,
+          stream: systemAudioOnlyStream,
+          micTracks: [],
+          cleanup: () => {
+            stopStreamTracks(systemAudioOnlyStream);
+            stopStreamTracks(systemDisplayStream);
+          },
+        };
+      } catch (error) {
+        stopStreamTracks(systemDisplayStream);
+        throw error;
+      }
+    }
+
+    async function acquireBothMixedStream() {
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        throw new Error('Microphone capture is not supported in this environment.');
+      }
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+        throw new Error('System audio capture is not supported in this environment.');
+      }
+
+      const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+      if (typeof AudioContextConstructor !== 'function') {
+        throw new Error('Audio mixing is not supported in this environment.');
+      }
+
+      let micStream = null;
+      let systemDisplayStream = null;
+      let audioContext = null;
+      let mixedStream = null;
+      let micSourceNode = null;
+      let systemSourceNode = null;
+      let mixedDestinationNode = null;
+
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micTracks = ensureAudioTracks(micStream, 'microphone');
+
+        systemDisplayStream = await navigator.mediaDevices.getDisplayMedia({
+          audio: true,
+          video: true,
+        });
+        ensureAudioTracks(systemDisplayStream, 'system audio');
+
+        audioContext = new AudioContextConstructor();
+        mixedDestinationNode = audioContext.createMediaStreamDestination();
+        micSourceNode = audioContext.createMediaStreamSource(micStream);
+        systemSourceNode = audioContext.createMediaStreamSource(systemDisplayStream);
+        micSourceNode.connect(mixedDestinationNode);
+        systemSourceNode.connect(mixedDestinationNode);
+
+        const mixedAudioTracks = ensureAudioTracks(mixedDestinationNode.stream, 'mixed audio');
+        mixedStream = new MediaStream(mixedAudioTracks);
+
+        return {
+          activeMode: INPUT_SOURCE_MODES.BOTH,
+          stream: mixedStream,
+          micTracks,
+          cleanup: () => {
+            if (micSourceNode) {
+              micSourceNode.disconnect();
+            }
+            if (systemSourceNode) {
+              systemSourceNode.disconnect();
+            }
+            if (audioContext && audioContext.state !== 'closed') {
+              void audioContext.close().catch(() => {});
+            }
+
+            stopStreamTracks(mixedStream);
+            stopStreamTracks(micStream);
+            stopStreamTracks(systemDisplayStream);
+          },
+        };
+      } catch (error) {
+        if (micSourceNode) {
+          micSourceNode.disconnect();
+        }
+        if (systemSourceNode) {
+          systemSourceNode.disconnect();
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+          void audioContext.close().catch(() => {});
+        }
+        stopStreamTracks(mixedStream);
+        stopStreamTracks(micStream);
+        stopStreamTracks(systemDisplayStream);
+        throw error;
+      }
+    }
+
+    async function acquireStreamForMode(mode) {
+      if (mode === INPUT_SOURCE_MODES.MIC) {
+        return acquireMicStream();
+      }
+
+      if (mode === INPUT_SOURCE_MODES.SYSTEM) {
+        return acquireSystemStream();
+      }
+
+      if (mode === INPUT_SOURCE_MODES.BOTH) {
+        return acquireBothMixedStream();
+      }
+
+      throw new Error('Unsupported recording input mode.');
+    }
+
+    async function acquireStreamWithFallback(selectedInputMode) {
+      const requestedMode = normalizeInputSourceMode(selectedInputMode || DEFAULT_INPUT_SOURCE_MODE);
+      const acquisitionPlan = buildAcquisitionPlan(requestedMode);
+      const captureFailures = [];
+
+      for (const mode of acquisitionPlan) {
+        try {
+          const captureResult = await acquireStreamForMode(mode);
+          const fallbackNotice =
+            mode !== requestedMode
+              ? `${getInputSourceModeLabel(requestedMode)} was unavailable. Switched to ${getInputSourceModeLabel(mode)}.`
+              : '';
+
+          return {
+            ...captureResult,
+            fallbackNotice,
+            requestedMode,
+          };
+        } catch (error) {
+          captureFailures.push({ mode, error });
+          console.warn(`Audio capture attempt failed for ${mode}.`, error);
+        }
+      }
+
+      const triedModesLabel = acquisitionPlan.map((mode) => getInputSourceModeLabel(mode)).join(', ');
+      const failureSummary = captureFailures
+        .map(({ mode, error }) => `${getInputSourceModeLabel(mode)}: ${getCaptureErrorMessage(error, 'Unavailable')}`)
+        .join(' ');
+      const combinedMessage = failureSummary
+        ? `Unable to start recording. Tried ${triedModesLabel}. ${failureSummary}`
+        : `Unable to start recording. Tried ${triedModesLabel}.`;
+
+      throw new Error(combinedMessage);
+    }
+
     async function startRecording() {
       if (state.mode === modes.RECORDING || state.mode === modes.PROCESSING) {
         return;
@@ -153,20 +411,22 @@
         return;
       }
 
-      if (
-        !navigator.mediaDevices ||
-        typeof navigator.mediaDevices.getUserMedia !== 'function' ||
-        typeof MediaRecorder === 'undefined'
-      ) {
+      if (typeof MediaRecorder === 'undefined') {
         ui.clearStatusOverride();
-        ui.setMode(modes.ERROR, { errorMessage: 'Microphone recording is not supported in this environment.' });
+        ui.setMode(modes.ERROR, { errorMessage: 'Audio recording is not supported in this environment.' });
         return;
       }
 
       try {
         await ensureTranscriptSession();
+        state.inputSourceNotice = '';
+        releaseMediaResources();
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const selectedInputMode = normalizeInputSourceMode(state.selectedInputMode || DEFAULT_INPUT_SOURCE_MODE);
+        const captureResult = await acquireStreamWithFallback(selectedInputMode);
+        setActiveCaptureDetails(captureResult);
+
+        const stream = captureResult.stream;
         const selectedMimeType = getSupportedMimeType();
         const mediaRecorder = selectedMimeType
           ? new MediaRecorder(stream, { mimeType: selectedMimeType })
@@ -177,6 +437,7 @@
         state.audioChunks = [];
         state.mimeType = mediaRecorder.mimeType || selectedMimeType || defaultAudioMimeType;
         state.elapsedSeconds = 0;
+        state.inputSourceNotice = captureResult.fallbackNotice;
 
         mediaRecorder.addEventListener('dataavailable', (event) => {
           if (event.data && event.data.size > 0) {

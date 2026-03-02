@@ -190,6 +190,15 @@
             />
           </label>
 
+          <label class="meeting-modal-field">
+            <span>Audio source</span>
+            <select id="meeting-input-source-mode-input" name="inputSourceMode">
+              <option value="mic" selected>Microphone</option>
+              <option value="system">System Audio</option>
+              <option value="both">Mic + System</option>
+            </select>
+          </label>
+
           <div class="meeting-modal-actions">
             <button id="meeting-modal-cancel-btn" type="button" class="modal-btn secondary">
               Cancel
@@ -238,6 +247,38 @@
             </button>
             <button id="rename-meeting-submit-btn" type="submit" class="modal-btn primary">
               Save
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div id="delete-meeting-modal-backdrop" class="modal-backdrop" hidden>
+      <section
+        id="delete-meeting-modal"
+        class="meeting-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-meeting-modal-title"
+        aria-describedby="delete-meeting-modal-description"
+      >
+        <header class="meeting-modal-header">
+          <h2 id="delete-meeting-modal-title">Delete Meeting</h2>
+          <p id="delete-meeting-modal-description">
+            Delete "<span id="delete-meeting-title">Untitled meeting</span>"? This permanently deletes
+            the transcript.
+          </p>
+        </header>
+
+        <form id="delete-meeting-form" class="meeting-modal-form">
+          <p id="delete-meeting-error" class="modal-error" hidden></p>
+
+          <div class="meeting-modal-actions">
+            <button id="delete-meeting-cancel-btn" type="button" class="modal-btn secondary">
+              Cancel
+            </button>
+            <button id="delete-meeting-submit-btn" type="submit" class="modal-btn danger">
+              Delete
             </button>
           </div>
         </form>

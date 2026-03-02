@@ -1,6 +1,12 @@
 (function initializeRecordingUiModule() {
+  const {
+    normalizeInputSourceMode,
+    getInputSourceModeLabel,
+    INPUT_SOURCE_MODES,
+    DEFAULT_INPUT_SOURCE_MODE,
+  } = window.uiShared;
   const DEFAULT_MEETING_TITLE = 'New Recording';
-  const DEFAULT_RECORDING_SUBTITLE = 'Prepare your mic and press Start when ready.';
+  const DEFAULT_RECORDING_SUBTITLE = 'Prepare your audio source and press Start when ready.';
   const EMPTY_TRANSCRIPT_MESSAGE = 'No transcription yet. Click Start and Stop to process audio.';
 
   const recordingModes = Object.freeze({
@@ -61,6 +67,8 @@
     const recordingStatusTextInline = elements.recordingStatusTextInline;
     const recordingLiveDot = elements.recordingLiveDot;
     const tinySignalMeter = elements.tinySignalMeter;
+    const recordingSourceChip = elements.recordingSourceChip;
+    const recordingSourceNotice = elements.recordingSourceNotice;
     const timerHours = elements.timerHours;
     const timerMinutes = elements.timerMinutes;
     const timerSeconds = elements.timerSeconds;
@@ -84,13 +92,16 @@
       const searchParams = new URLSearchParams(search);
       const titleValue = searchParams.get('title');
       const participantValue = searchParams.get('participants');
+      const inputSourceModeValue = searchParams.get('inputSourceMode');
       const meetingTitle = normalizeMeetingTitle(titleValue);
       const participantCount = normalizeParticipants(participantValue);
+      const inputSourceMode = normalizeInputSourceMode(inputSourceModeValue || DEFAULT_INPUT_SOURCE_MODE);
 
       return {
         meetingTitle,
         participantCount,
         showParticipantSubtitle: participantValue !== null,
+        inputSourceMode,
       };
     }
 
@@ -178,13 +189,57 @@
       tinySignalMeter.classList.toggle('is-paused', false);
     }
 
+    function getEffectiveInputMode(mode) {
+      if (mode === recordingModes.RECORDING || mode === recordingModes.PROCESSING) {
+        return normalizeInputSourceMode(state.activeInputMode || state.selectedInputMode);
+      }
+
+      return normalizeInputSourceMode(state.selectedInputMode || DEFAULT_INPUT_SOURCE_MODE);
+    }
+
+    function updateInputSourceStatus(mode) {
+      const effectiveMode = getEffectiveInputMode(mode);
+      const sourceLabel = getInputSourceModeLabel(effectiveMode);
+
+      if (recordingSourceChip) {
+        recordingSourceChip.textContent = `Source: ${sourceLabel}`;
+      }
+
+      if (!recordingSourceNotice) {
+        return;
+      }
+
+      const noticeMessage = String(state.inputSourceNotice || '').trim();
+      recordingSourceNotice.textContent = noticeMessage;
+      recordingSourceNotice.hidden = !noticeMessage;
+    }
+
     function updateMicButton(mode) {
+      const effectiveInputMode = getEffectiveInputMode(mode);
+      const canControlMic =
+        effectiveInputMode === INPUT_SOURCE_MODES.MIC || effectiveInputMode === INPUT_SOURCE_MODES.BOTH;
       const isMuted = state.isMicMuted;
 
-      micToggleButtonIcon.className = isMuted ? 'bi bi-mic-mute-fill' : 'bi bi-mic-fill';
-      micToggleButton.classList.toggle('is-muted', isMuted);
-      micToggleButton.disabled = mode === recordingModes.PROCESSING;
-      micToggleButton.setAttribute('aria-pressed', isMuted ? 'true' : 'false');
+      if (canControlMic) {
+        micToggleButtonIcon.className = isMuted ? 'bi bi-mic-mute-fill' : 'bi bi-mic-fill';
+      } else {
+        micToggleButtonIcon.className = 'bi bi-mic-mute';
+      }
+
+      micToggleButton.classList.toggle('is-muted', canControlMic && isMuted);
+      micToggleButton.disabled = mode === recordingModes.PROCESSING || !canControlMic;
+      micToggleButton.setAttribute('aria-pressed', canControlMic && isMuted ? 'true' : 'false');
+
+      if (!canControlMic) {
+        micToggleButton.setAttribute('aria-label', 'Microphone mute is unavailable in system audio mode');
+        return;
+      }
+
+      if (effectiveInputMode === INPUT_SOURCE_MODES.BOTH) {
+        micToggleButton.setAttribute('aria-label', isMuted ? 'Unmute microphone channel' : 'Mute microphone channel');
+        return;
+      }
+
       micToggleButton.setAttribute('aria-label', isMuted ? 'Unmute microphone' : 'Mute microphone');
     }
 
@@ -213,6 +268,7 @@
     function applyRecordingState() {
       const mode = state.mode;
       updateInlineRecordingStatus(mode);
+      updateInputSourceStatus(mode);
       updateMicButton(mode);
       updatePrimaryActionButton(mode);
       updateStopButton(mode);
@@ -287,6 +343,8 @@
   window.recordingUi = {
     createRecordingUi,
     modes: recordingModes,
+    inputModes: INPUT_SOURCE_MODES,
+    DEFAULT_INPUT_SOURCE_MODE,
     DEFAULT_MEETING_TITLE,
     DEFAULT_RECORDING_SUBTITLE,
     EMPTY_TRANSCRIPT_MESSAGE,

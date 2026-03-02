@@ -7,7 +7,7 @@ AI Note is an Electron desktop app for recording meetings, transcribing speech w
 The codebase is built around one core workflow:
 
 1. Create a meeting session.
-2. Capture one or more audio segments from the microphone.
+2. Capture one or more audio segments from microphone, system audio, or both.
 3. Transcribe each segment with speaker-aware output.
 4. Append segments to a persistent transcript document.
 5. Generate and refresh AI summary metadata.
@@ -22,10 +22,12 @@ The codebase is built around one core workflow:
 - Persists everything as JSON under `transcripts/`.
 
 ### 2) Live Audio Capture and Processing
-- Uses `navigator.mediaDevices.getUserMedia` and `MediaRecorder`.
+- Uses `navigator.mediaDevices.getUserMedia`, display media capture, and `MediaRecorder`.
+- Supports input modes: `Microphone`, `System Audio`, and `Mic + System` mixed capture.
+- Falls back automatically to alternate sources when the requested mode is unavailable.
 - Detects a supported MIME type and falls back safely.
 - Converts captured audio blobs to base64 and sends to main process.
-- Applies mute/unmute preference to active audio tracks.
+- Applies mute/unmute preference to microphone tracks when available.
 
 ### 3) Transcription Pipeline
 - Calls Azure OpenAI transcription endpoint with diarization-first strategy.
@@ -61,7 +63,7 @@ The codebase is built around one core workflow:
 ### Dashboard (`src/dashboard.html`, `src/dashboard/*.js`)
 - Recent meetings cards
 - Search and quick filtering
-- New recording modal (title + participant count)
+- New recording modal (title + participant count + input source mode)
 - Rename/delete session actions
 - Estimated time saved and productivity lift metrics
 

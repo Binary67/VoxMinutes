@@ -28,6 +28,11 @@
     isSaving: false,
   };
 
+  const deleteMeetingState = {
+    sessionId: '',
+    isDeleting: false,
+  };
+
   const tagList = document.getElementById('tag-list');
   const meetingsGrid = document.getElementById('meetings-grid');
   const emptyState = document.getElementById('empty-state');
@@ -45,6 +50,7 @@
   const newRecordingForm = document.getElementById('new-recording-form');
   const meetingTitleInput = document.getElementById('meeting-title-input');
   const meetingParticipantsInput = document.getElementById('meeting-participants-input');
+  const meetingInputSourceModeInput = document.getElementById('meeting-input-source-mode-input');
   const modalCancelButton = document.getElementById('meeting-modal-cancel-btn');
   const renameMeetingModalBackdrop = document.getElementById('rename-meeting-modal-backdrop');
   const renameMeetingModal = document.getElementById('rename-meeting-modal');
@@ -53,6 +59,13 @@
   const renameMeetingError = document.getElementById('rename-meeting-error');
   const renameMeetingCancelButton = document.getElementById('rename-meeting-cancel-btn');
   const renameMeetingSubmitButton = document.getElementById('rename-meeting-submit-btn');
+  const deleteMeetingModalBackdrop = document.getElementById('delete-meeting-modal-backdrop');
+  const deleteMeetingModal = document.getElementById('delete-meeting-modal');
+  const deleteMeetingForm = document.getElementById('delete-meeting-form');
+  const deleteMeetingTitle = document.getElementById('delete-meeting-title');
+  const deleteMeetingError = document.getElementById('delete-meeting-error');
+  const deleteMeetingCancelButton = document.getElementById('delete-meeting-cancel-btn');
+  const deleteMeetingSubmitButton = document.getElementById('delete-meeting-submit-btn');
 
   window.dashboardStateStore = {
     meetingVisuals,
@@ -63,6 +76,7 @@
     dashboardState,
     modalState,
     renameMeetingState,
+    deleteMeetingState,
     tagList,
     meetingsGrid,
     emptyState,
@@ -79,6 +93,7 @@
     newRecordingForm,
     meetingTitleInput,
     meetingParticipantsInput,
+    meetingInputSourceModeInput,
     modalCancelButton,
     renameMeetingModalBackdrop,
     renameMeetingModal,
@@ -87,5 +102,12 @@
     renameMeetingError,
     renameMeetingCancelButton,
     renameMeetingSubmitButton,
+    deleteMeetingModalBackdrop,
+    deleteMeetingModal,
+    deleteMeetingForm,
+    deleteMeetingTitle,
+    deleteMeetingError,
+    deleteMeetingCancelButton,
+    deleteMeetingSubmitButton,
   };
 })();

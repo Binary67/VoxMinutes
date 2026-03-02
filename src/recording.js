@@ -1,4 +1,9 @@
-const { renderDefaultTags, initializeSmartScrollbars, normalizeParticipantCount } = window.uiShared;
+const {
+  renderDefaultTags,
+  initializeSmartScrollbars,
+  normalizeParticipantCount,
+  DEFAULT_INPUT_SOURCE_MODE,
+} = window.uiShared;
 
 const recordingUiModule = window.recordingUi;
 const recordingMediaModule = window.recordingMedia;
@@ -11,6 +16,8 @@ const recordingSubtitle = document.getElementById('recording-subtitle');
 const recordingStatusTextInline = document.getElementById('recording-status-text-inline');
 const recordingLiveDot = document.getElementById('recording-live-dot');
 const tinySignalMeter = document.getElementById('tiny-signal-meter');
+const recordingSourceChip = document.getElementById('recording-source-chip');
+const recordingSourceNotice = document.getElementById('recording-source-notice');
 const timerHours = document.getElementById('timer-hours');
 const timerMinutes = document.getElementById('timer-minutes');
 const timerSeconds = document.getElementById('timer-seconds');
@@ -36,6 +43,8 @@ const recordingElements = {
   recordingStatusTextInline,
   recordingLiveDot,
   tinySignalMeter,
+  recordingSourceChip,
+  recordingSourceNotice,
   timerHours,
   timerMinutes,
   timerSeconds,
@@ -70,6 +79,9 @@ const recordingState = {
   meetingTitle: recordingUiModule.DEFAULT_MEETING_TITLE,
   participantCount: 1,
   showParticipantSubtitle: false,
+  selectedInputMode: DEFAULT_INPUT_SOURCE_MODE,
+  activeInputMode: '',
+  inputSourceNotice: '',
 };
 
 const recordingUi = recordingUiModule.createRecordingUi({
@@ -144,6 +156,9 @@ function initializeRecordingPage() {
   recordingState.meetingTitle = recordingContext.meetingTitle;
   recordingState.participantCount = recordingContext.participantCount;
   recordingState.showParticipantSubtitle = recordingContext.showParticipantSubtitle;
+  recordingState.selectedInputMode = recordingContext.inputSourceMode;
+  recordingState.activeInputMode = '';
+  recordingState.inputSourceNotice = '';
 
   renderDefaultTags(tagList);
   recordingUi.applyRecordingContext();
