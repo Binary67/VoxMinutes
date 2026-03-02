@@ -58,7 +58,7 @@ The codebase is built around one core workflow:
 
 ## UI Surface
 
-### Dashboard (`src/dashboard.html`, `src/dashboard.js`)
+### Dashboard (`src/dashboard.html`, `src/dashboard/*.js`)
 - Recent meetings cards
 - Search and quick filtering
 - New recording modal (title + participant count)
@@ -170,4 +170,3 @@ transcripts/                # persisted meeting transcript JSON files
 
 - Install dependencies with `npm install`
 - Start desktop app with `npm start`
-

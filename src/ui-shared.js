@@ -15,6 +15,10 @@
 
   const SCROLL_HIDE_DELAY_MS = 700;
   const scrollHideTimeouts = new WeakMap();
+  const fallbackTranscriptSummaries = Object.freeze({
+    dashboard: 'Transcript captured. Open to view details.',
+    meetings: 'Transcript captured. Open meeting details to review the full transcript.',
+  });
 
   function normalizeParticipantCount(value) {
     const numericValue = Number.parseInt(value, 10);
@@ -86,6 +90,20 @@
     const queryParams = new URLSearchParams();
     queryParams.set('sessionId', normalizedSessionId);
     return `meeting-details.html?${queryParams.toString()}`;
+  }
+
+  function hasRecordingApi(recordingApi) {
+    const api = typeof recordingApi === 'undefined' ? window.recordingApi : recordingApi;
+    return Boolean(api && typeof api.listTranscriptSessions === 'function');
+  }
+
+  function getFallbackTranscriptSummary(context) {
+    const normalizedContext = String(context || '').trim().toLowerCase();
+    return fallbackTranscriptSummaries[normalizedContext] || fallbackTranscriptSummaries.dashboard;
+  }
+
+  function buildMeetingSearchTarget(meeting, extraTerms) {
+    return `${meeting.meetingTitle || ''} ${meeting.meetingSummary || ''} ${extraTerms || ''}`.toLowerCase();
   }
 
   function parseSessionIdFromQuery(search) {
@@ -176,6 +194,9 @@
     renderDefaultTags,
     initializeSmartScrollbars,
     refreshScrollableState,
+    hasRecordingApi,
+    getFallbackTranscriptSummary,
+    buildMeetingSearchTarget,
     normalizeParticipantCount,
     formatParticipantLabel,
     formatMeetingDate,

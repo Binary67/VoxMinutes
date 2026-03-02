@@ -3,6 +3,9 @@ const {
   renderDefaultTags,
   initializeSmartScrollbars,
   refreshScrollableState,
+  hasRecordingApi,
+  getFallbackTranscriptSummary,
+  buildMeetingSearchTarget,
   formatParticipantLabel,
   formatMeetingDate,
   formatMeetingDuration,
@@ -21,27 +24,13 @@ const meetingsList = document.getElementById('meetings-list');
 const meetingsEmptyState = document.getElementById('meetings-empty-state');
 const meetingsCountValue = document.getElementById('meetings-count-value');
 
-function hasRecordingApi() {
-  return Boolean(
-    window.recordingApi && typeof window.recordingApi.listTranscriptSessions === 'function'
-  );
-}
-
-function getFallbackSummary() {
-  return 'Transcript captured. Open meeting details to review the full transcript.';
-}
-
-function getMeetingSearchTarget(meeting) {
-  return `${meeting.meetingTitle || ''} ${meeting.meetingSummary || ''}`.toLowerCase();
-}
-
 function getFilteredMeetings() {
   if (!meetingsState.searchQuery) {
     return meetingsState.meetings;
   }
 
   return meetingsState.meetings.filter((meeting) =>
-    getMeetingSearchTarget(meeting).includes(meetingsState.searchQuery)
+    buildMeetingSearchTarget(meeting).includes(meetingsState.searchQuery)
   );
 }
 
@@ -51,7 +40,9 @@ function createMeetingRow(meeting) {
   const dateLabel = escapeHtml(formatMeetingDate(meeting.updatedAt));
   const durationLabel = escapeHtml(formatMeetingDuration(meeting.durationSec));
   const participantLabel = escapeHtml(formatParticipantLabel(meeting.participantCount));
-  const summaryText = escapeHtml(String(meeting.meetingSummary || '').trim() || getFallbackSummary());
+  const summaryText = escapeHtml(
+    String(meeting.meetingSummary || '').trim() || getFallbackTranscriptSummary('meetings')
+  );
   const disabledAttribute = sessionId ? '' : 'disabled';
   const sessionIdAttribute = sessionId ? `data-session-id="${escapeHtml(sessionId)}"` : '';
 
