@@ -197,7 +197,7 @@
                 id="meeting-input-source-mode-input"
                 name="inputSourceMode"
                 type="hidden"
-                value="mic"
+                value="system"
               />
               <button
                 id="meeting-input-source-trigger"
@@ -208,7 +208,7 @@
                 aria-controls="meeting-input-source-listbox"
                 aria-labelledby="meeting-input-source-label meeting-input-source-trigger-label"
               >
-                <span id="meeting-input-source-trigger-label">Microphone</span>
+                <span id="meeting-input-source-trigger-label">System Audio</span>
               </button>
               <div
                 id="meeting-input-source-listbox"
@@ -220,23 +220,23 @@
                 hidden
               >
                 <div
-                  id="meeting-input-source-option-mic"
+                  id="meeting-input-source-option-system"
                   class="meeting-input-source-option is-selected is-active"
                   role="option"
                   aria-selected="true"
-                  data-value="mic"
-                >
-                  <span class="meeting-input-source-option-label">Microphone</span>
-                  <i class="bi bi-check-lg meeting-input-source-option-check" aria-hidden="true"></i>
-                </div>
-                <div
-                  id="meeting-input-source-option-system"
-                  class="meeting-input-source-option"
-                  role="option"
-                  aria-selected="false"
                   data-value="system"
                 >
                   <span class="meeting-input-source-option-label">System Audio</span>
+                  <i class="bi bi-check-lg meeting-input-source-option-check" aria-hidden="true"></i>
+                </div>
+                <div
+                  id="meeting-input-source-option-mic"
+                  class="meeting-input-source-option"
+                  role="option"
+                  aria-selected="false"
+                  data-value="mic"
+                >
+                  <span class="meeting-input-source-option-label">Microphone</span>
                   <i class="bi bi-check-lg meeting-input-source-option-check" aria-hidden="true"></i>
                 </div>
                 <div

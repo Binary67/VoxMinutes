@@ -3,6 +3,7 @@
     normalizeParticipantCount,
     normalizeInputSourceMode,
     getInputSourceModeLabel,
+    INPUT_SOURCE_MODES,
     DEFAULT_INPUT_SOURCE_MODE,
   } = window.uiShared;
   const {
@@ -385,7 +386,7 @@
   function openRecordingModal() {
     meetingTitleInput.value = '';
     meetingParticipantsInput.value = '1';
-    setInputSourceValue(DEFAULT_INPUT_SOURCE_MODE);
+    setInputSourceValue(INPUT_SOURCE_MODES.SYSTEM);
     closeInputSourceListbox({ restoreFocus: false });
 
     if (!openModal('new-recording')) {
